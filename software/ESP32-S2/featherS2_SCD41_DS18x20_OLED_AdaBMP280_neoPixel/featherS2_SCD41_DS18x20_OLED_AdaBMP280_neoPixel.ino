@@ -209,9 +209,13 @@ void setup() {
     delay(1000);
     showLogo_regosh();
     delay(1000);
+    neopixel.clear();
+    neopixel.show();
 
     Serial.println("============ Testing DS18x20 Sensor ============");
 
+// needs to be finished
+//*****************************************
 #ifndef DS18x20_IS_ATTACHED
     Serial.println("DS18x20 not in use");
     OLEDtestBMP280();
@@ -247,7 +251,7 @@ void setup() {
     Serial.print("Soil Temperature: ");
     Serial.print(soilTemperatureC);
     Serial.println(" ºC");
-    delay(3000);
+    delay(1000);
 
     Serial.println("==================  end test  ==================");
     Serial.println();
@@ -318,7 +322,7 @@ void setup() {
     Serial.println();
     
     OLEDshowBMP280(bmp.readPressure()/100, bmp.readTemperature(), bmp.readAltitude(SEA_LEVEL_PRESSURE));
-    delay(3000);
+    delay(1000);
 
     Serial.println("==================  end test  ==================");
     Serial.println();
@@ -465,7 +469,7 @@ void loop() {
     }
 
 #ifdef DS18x20_IS_ATTACHED
-    if (millis() - DS18x20DataTimer >= 1000){
+    if (millis() - DS18x20DataTimer >= 30000){
       DS18x20sensors.requestTemperatures(); 
       soilTemperatureC = DS18x20sensors.getTempCByIndex(0);
       if(soilTemperatureC == DEVICE_DISCONNECTED_C) {
@@ -479,7 +483,7 @@ void loop() {
 #endif
 
 #ifdef BMP_IS_ATTACHED
-    if (millis() - BMP280DataTimer >= 100){
+    if (millis() - BMP280DataTimer >= 200){
     BMP280temp = bmp.readTemperature();
     BMP280pres = bmp.readPressure();
     BMP280alti = bmp.readAltitude(SEA_LEVEL_PRESSURE); /* Adjusted to local forecast! */
@@ -497,6 +501,9 @@ void loop() {
     if (screenState == 0) {
         OLEDshowCO2(co2, temperature, humidity);
       }
+    neopixel.clear();
+    neopixel.show();
+    
     }
 #endif
 
@@ -527,8 +534,7 @@ void loop() {
       //delay(50);
       digitalWrite(LEDonBoard, LOW);
       digitalWrite(LEDexternal, LOW);    
-      neopixel.clear();
-      neopixel.show();
+
     }
     
   lastButtonState = reading;   
