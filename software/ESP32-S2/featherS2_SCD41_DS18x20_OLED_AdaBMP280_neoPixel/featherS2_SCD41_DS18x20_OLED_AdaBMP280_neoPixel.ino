@@ -208,7 +208,7 @@ void setup() {
     showLogo_hackteria();
     delay(1000);
     showLogo_regosh();
-    delay(1000);
+    delay(5000);
     neopixel.clear();
     neopixel.show();
 
@@ -1098,7 +1098,7 @@ void showLogo_regosh(){
   display.setTextSize(2);
   display.setTextColor(WHITE);
   display.setCursor(24,0);
-  display.println("re-GOSH");
+  //display.println("re-GOSH");
   // Update the display
   display.display();
   delay(30);
