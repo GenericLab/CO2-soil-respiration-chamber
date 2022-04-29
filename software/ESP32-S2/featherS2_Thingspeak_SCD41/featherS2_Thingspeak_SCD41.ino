@@ -43,6 +43,7 @@
 
 #define BMP_IS_ATTACHED
 #define DS18x20_IS_ATTACHED
+#define USE_THINGSPEAK
 
 #include <Arduino.h>
 #include <SensirionI2CScd4x.h>
@@ -171,6 +172,26 @@ void printSerialNumber(uint16_t serial0, uint16_t serial1, uint16_t serial2) {
     Serial.println();
 }
 
+
+
+
+// THINGSSPEAK ********************
+// ==================================
+
+#ifdef USE_THINGSPEAK
+  #include <WiFi.h>
+  #include "secrets.h"
+  #include "ThingSpeak.h" // always include thingspeak header file after other header files and custom macros
+  
+  char ssid[] = SECRET_SSID;   // your network SSID (name) 
+  char pass[] = SECRET_PASS;   // your network password
+  int keyIndex = 0;            // your network key Index number (needed only for WEP)
+  WiFiClient  client;
+  
+  unsigned long myChannelNumber = SECRET_CH_ID;
+  const char * myWriteAPIKey = SECRET_WRITE_APIKEY;
+#endif
+
 void setup() {
     
     Serial.begin(115200);
@@ -186,6 +207,27 @@ void setup() {
     pinMode(cal_pin, INPUT_PULLUP); // entrada pulsado para calibrar, seteada como pulluppara poder conectar pulsador sin poenr resistencia adicional
     
     Serial.println("    ");
+    
+    Serial.println("=========== Turn on Wifi ==================");
+
+#ifdef USE_THINGSPEAK
+    WiFi.mode(WIFI_STA);   
+    ThingSpeak.begin(client);  // Initialize ThingSpeak
+    Serial.println("Starting WiFi");
+    
+    // Connect or reconnect to WiFi
+    if(WiFi.status() != WL_CONNECTED){
+      Serial.print("Attempting to connect to SSID: ");
+      Serial.println(SECRET_SSID);
+      while(WiFi.status() != WL_CONNECTED){
+        WiFi.begin(ssid, pass);  // Connect to WPA/WPA2 network. Change this line if using open or WEP network
+        Serial.print(".");
+        delay(5000);     
+      } 
+      Serial.println("\nConnected.");
+    }
+#endif
+
     Serial.println("=========== Turn on NEO Pixel ==================");
     neopixel.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
     delay(100);
@@ -490,7 +532,8 @@ void loop() {
     BMP280temp = bmp.readTemperature();
     BMP280pres = bmp.readPressure();
     BMP280alti = bmp.readAltitude(SEA_LEVEL_PRESSURE); /* Adjusted to local forecast! */
-    BMP280preshPa = BMP280pres / 100; 
+    BMP280preshPa = BMP280pres;
+    BMP280preshPa = BMP280preshPa / 100;  
     BMP280DataTimer = millis();
     TimeSec = BMP280DataTimer / 1000;
     printResults();
@@ -512,7 +555,7 @@ void loop() {
 
 // read the SCD41 CO2 Sensor
 
-    if (millis() - getDataTimer >= 5000){
+    if (millis() - getDataTimer >= 20000){
       digitalWrite(LEDonBoard, HIGH);
       digitalWrite(LEDexternal, HIGH);
       neopixel.setPixelColor(0, neopixel.Color(255, 0, 255));
@@ -531,6 +574,23 @@ void loop() {
           getDataTimer = millis();
           TimeSec = getDataTimer / 1000;
           //printResults();
+          Serial.println("Sending measurements");
+          ThingSpeak.setField(1, BMP280temp);
+          ThingSpeak.setField(2, BMP280preshPa);
+          ThingSpeak.setField(3, co2);
+          ThingSpeak.setField(4, humidity);
+          ThingSpeak.setField(5, soilTemperatureC);
+          // set the status
+          //ThingSpeak.setStatus("dusjagr is chilling at the beach");
+        
+          // write to the ThingSpeak channel
+          int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+          if(x == 200){
+            Serial.println("Channel update successful.");
+          }
+          else{
+            Serial.println("Problem updating channel. HTTP error code " + String(x));
+          }
           }
   
       meas_counter++;
@@ -560,8 +620,7 @@ void printResults()
 #ifdef BMP_IS_ATTACHED
         Serial.print("\t");
         Serial.print("BMB-Pres: ");
-        BMP280preshPa = BMP280pres / 100; 
-        Serial.print(BMP280pres);
+        Serial.print(BMP280preshPa);
         Serial.print("\t");
         Serial.print("Alti: ");
         Serial.print(BMP280alti);
