@@ -66,6 +66,12 @@ const int neoPixelPin = 7;          // NeoPixel for UROS board
 const int neoPixelcount = 1;         // How many NeoPixels are attached?
 int neoBrightness = 25;
 
+  float BMP280temp = -1;
+  float BMP280preshPa = -1;
+  float soilTemperatureC = -1;
+  uint32_t BMP280pres = -1;
+  float BMP280alti = -1;
+
 // Declare our NeoPixel object:
 Adafruit_NeoPixel neopixel(neoPixelcount, neoPixelPin, NEO_GRB + NEO_KHZ800);
 
@@ -95,7 +101,7 @@ bool ascSetting = false; // Turn automatic self calibration off
   // arrays to hold device address
   DeviceAddress soilThermometer;
 
-  float soilTemperatureC;
+  //float soilTemperatureC;
 
   // function to print a device address
 void printAddress(DeviceAddress deviceAddress)
@@ -117,10 +123,10 @@ void printAddress(DeviceAddress deviceAddress)
 
   #define SEA_LEVEL_PRESSURE    1010.0f   // sea level pressure 1013.25
 
-  float BMP280temp;
-  uint32_t BMP280pres;
-  float BMP280preshPa;
-  float BMP280alti;
+  //float BMP280temp;
+  //uint32_t BMP280pres;
+  //float BMP280preshPa;
+  //float BMP280alti;
   unsigned long BMP280DataTimer = 0;
 #endif
 
@@ -140,18 +146,6 @@ uint32_t meas_counter = 0;
 int32_t thresholdPPM = 450;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
-void initDisplay()
-{  /* SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
-     } 
-     */
-    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-    display.clearDisplay();
-    display.display();
-}
 
 // """"""""""""""""""""""""""""""""""
 
@@ -202,6 +196,34 @@ void printSerialNumber(uint16_t serial0, uint16_t serial1, uint16_t serial2) {
   
   unsigned long myChannelNumber = SECRET_CH_ID;
   const char * myWriteAPIKey = SECRET_WRITE_APIKEY;
+
+void connectWifi(){
+    // Connect or reconnect to WiFi
+    if(WiFi.status() != WL_CONNECTED){
+      OLEDtestWiFi();
+      neopixel.setPixelColor(0, neopixel.Color(0, 0, 255));
+      neopixel.show();
+      Serial.print("Attempting to connect to SSID: ");
+      Serial.println(SECRET_SSID);
+      while(WiFi.status() != WL_CONNECTED){
+        WiFi.begin(ssid, pass);  // Connect to WPA/WPA2 network. Change this line if using open or WEP network
+        Serial.print(".");
+        delay(2000);
+        neopixel.setPixelColor(0, neopixel.Color(255, 0, 0));
+        neopixel.show();
+        delay(2000);
+        neopixel.clear();
+        neopixel.show();     
+      } 
+      Serial.println("\nConnected.");
+      neopixel.setPixelColor(0, neopixel.Color(0, 255, 0));
+      neopixel.show();
+      OLEDtestSuccess();
+      delay(2000);
+      OLEDdrawBackground();
+    }
+}
+  
 #endif
 
 void setup() {
@@ -219,23 +241,7 @@ void setup() {
     pinMode(cal_pin, INPUT_PULLUP); // entrada pulsado para calibrar, seteada como pulluppara poder conectar pulsador sin poenr resistencia adicional
     
     Serial.println("    ");
-
-    Serial.println("=========== Initializing OLED Screen ===========");
-    initDisplay();
-    Serial.println("    ");
-    delay(100);
-
-    showLogo_hackteria();
-    delay(1000);
-    showLogo_regosh();
-    delay(1000);
-    showLogo_humus_text();
-    delay(1000);
-    neopixel.clear();
-    neopixel.show();
-
-    Serial.println("    ");
-
+    
     Serial.println("=========== Turn on NEO Pixel ==================");
     neopixel.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
     delay(100);
@@ -247,10 +253,28 @@ void setup() {
     //rainbowCycle(5);
     neopixel.setPixelColor(0, neopixel.Color(255, 0, 255));
     neopixel.show();
-
+    
 
     Serial.println("    ");
+    Serial.println("=========== Initializing OLED Screen ===========");
+    initDisplay();
+    Serial.println("    ");
+    delay(100);
 
+    showLogo_hackteria();
+    delay(1000);
+    neopixel.clear();
+    neopixel.show();
+    showLogo_regosh();
+    delay(1000);
+    showLogo_humus_text();
+    delay(1000);
+    neopixel.clear();
+    neopixel.show();
+    display.clearDisplay();
+
+    Serial.println("    ");
+        
     Serial.println("=========== Turn on Wifi ==================");
 
 #ifdef USE_THINGSPEAK
@@ -258,51 +282,40 @@ void setup() {
     ThingSpeak.begin(client);  // Initialize ThingSpeak
     Serial.println("Starting WiFi");
     
-    // Connect or reconnect to WiFi
-    if(WiFi.status() != WL_CONNECTED){
-      neopixel.setPixelColor(0, neopixel.Color(255, 0, 0));
-      neopixel.show();
-      Serial.print("Attempting to connect to SSID: ");
-      Serial.println(SECRET_SSID);
-      WiFi.begin(ssid, pass);  // Connect to WPA/WPA2 network. Change this line if using open or WEP network
-      Serial.print(".");
-      delay(1000);
-      Serial.print(".");
-      delay(1000);
-      Serial.print(".");
-      delay(1000);
-      Serial.print(".");
-    }
-
-    if(WiFi.status() == WL_CONNECTED){ {
-      Serial.println("\nConnected.");
-      neopixel.setPixelColor(0, neopixel.Color(0, 255, 0));
-      neopixel.show();
-    }
+    connectWifi();
 #endif
 
-    
+    Serial.println("    ");
+
     Serial.println("============ Testing DS18x20 Sensor ============");
 
 // needs to be finished
 //*****************************************
 #ifndef DS18x20_IS_ATTACHED
     Serial.println("DS18x20 not in use");
-    OLEDtestBMP280();
+    OLEDtestDS18b20();
     delay(500);
-    OLEDnoBMP280();
+    OLEDnotinuse();
     delay(2000);
 #endif
 
 #ifdef DS18x20_IS_ATTACHED
     Serial.println("DS18x20: begin");
+    OLEDtestDS18b20();
     DS18x20sensors.begin();
 
     Serial.print("DS18x20: Found ");
     Serial.print(DS18x20sensors.getDeviceCount(), DEC);
     Serial.println(" devices.");
 
-    if (!DS18x20sensors.getAddress(soilThermometer, 0)) Serial.println("Unable to find address for Device 0");
+    if (!DS18x20sensors.getAddress(soilThermometer, 0)) {
+      Serial.println("Unable to find address for Device 0");
+      delay(500);
+      showError(); //ERROR
+    } else {
+      delay(500);
+      OLEDtestSuccess();
+    }
 
     Serial.print("DS18x20: Device 0 Address: ");
     printAddress(soilThermometer);
@@ -333,7 +346,7 @@ void setup() {
     Serial.println("BMP280 not in use");
     OLEDtestBMP280();
     delay(500);
-    OLEDnoBMP280();
+    OLEDnotinuse();
     delay(2000);
 #endif
 
@@ -341,6 +354,7 @@ void setup() {
     unsigned status;
     Serial.println("BMP280: begin");
     status = bmp.begin(0x76, BMP280_CHIPID);
+    //status = bmp.begin(0x77, BMP280_CHIPID);
     
     OLEDtestBMP280();
     delay(500);
@@ -514,24 +528,6 @@ void setup() {
 }
 
 void loop() {
-#ifdef USE_THINGSPEAK
-//  // Connect or reconnect to WiFi
-//    if(WiFi.status() != WL_CONNECTED){
-//      Serial.print("Attempting to connect to SSID: ");
-//      Serial.println(SECRET_SSID);
-//      while(WiFi.status() != WL_CONNECTED){
-//        WiFi.begin(ssid, pass);  // Connect to WPA/WPA2 network. Change this line if using open or WEP network
-//        Serial.print(".");
-//        delay(2000);
-//        neopixel.setPixelColor(0, neopixel.Color(255, 0, 0));
-//        neopixel.show();
-//        delay(2000);
-//        neopixel.clear();
-//        neopixel.show();     
-//      } 
-//      Serial.println("\nConnected.");
-//    }
-#endif
 
     int reading = digitalRead(buttonPin);
     if (reading != lastButtonState) {
@@ -580,52 +576,35 @@ void loop() {
     BMP280preshPa = BMP280preshPa / 100;  
     BMP280DataTimer = millis();
     TimeSec = BMP280DataTimer / 1000;
-    printResults();
+    //printResults();
     
-    // maybe put this somewhere else...
-    if (screenState == 1) {
-        OLEDshowBMP280(BMP280pres, BMP280temp, BMP280alti);
-        delay(10);
-      }
-    
-    if (screenState == 0) {
-        OLEDshowCO2(co2, temperature, humidity);
-      }
-    neopixel.clear();
-    neopixel.show();
+//    // maybe put this somewhere else...
+//    if (screenState == 1) {
+//        OLEDshowBMP280(BMP280pres, BMP280temp, BMP280alti);
+//        delay(10);
+//      }
+//    
+//    if (screenState == 0) {
+//        OLEDshowCO2(co2, temperature, humidity);
+//      }
+//    neopixel.clear();
+//    neopixel.show();
     
     }
 #endif
 
 // read the SCD41 CO2 Sensor
-    
+
     if (millis() - getDataTimer >= 20000){
-      neopixel.setPixelColor(0, neopixel.Color(255, 0, 255));
-      neopixel.show();
-      if(WiFi.status() != WL_CONNECTED){
-      neopixel.setPixelColor(0, neopixel.Color(255, 0, 0));
-      neopixel.show();  
-      Serial.print("Attempting to connect to SSID: ");
-      Serial.println(SECRET_SSID);
-      delay(5000);
-//      while(WiFi.status() != WL_CONNECTED){
-//        WiFi.begin(ssid, pass);  // Connect to WPA/WPA2 network. Change this line if using open or WEP network
-//        Serial.print(".");
-//        delay(2000);
-//        neopixel.setPixelColor(0, neopixel.Color(255, 0, 0));
-//        neopixel.show();
-//        delay(2000);
-//        neopixel.clear();
-//        neopixel.show();     
-//      } 
-      
-    }
-    else {
-      Serial.println("\nConnected.");
-    
       digitalWrite(LEDonBoard, HIGH);
       digitalWrite(LEDexternal, HIGH);
-
+      neopixel.setPixelColor(0, neopixel.Color(255, 0, 255));
+      neopixel.show();
+      
+    #ifdef USE_THINGSPEAK
+        Serial.println("Checking WiFi");
+        connectWifi();
+    #endif
     
     // Read Measurement
 
@@ -639,13 +618,19 @@ void loop() {
       } else {
           getDataTimer = millis();
           TimeSec = getDataTimer / 1000;
-          //printResults();
+          
+        #ifdef USE_THINGSPEAK
           Serial.println("Sending measurements");
-          ThingSpeak.setField(1, BMP280temp);
-          ThingSpeak.setField(2, BMP280preshPa);
+         #ifdef BMP_IS_ATTACHED
+          if (BMP280preshPa != 42949672.00) ThingSpeak.setField(1, BMP280temp);
+          if (BMP280preshPa != 42949672.00) ThingSpeak.setField(2, BMP280preshPa);
+         #endif
           ThingSpeak.setField(3, co2);
           ThingSpeak.setField(4, humidity);
+         #ifdef DS18x20_IS_ATTACHED
           ThingSpeak.setField(5, soilTemperatureC);
+         #endif
+          
           // set the status
           //ThingSpeak.setStatus("dusjagr is chilling at the beach");
         
@@ -653,12 +638,13 @@ void loop() {
           int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
           if(x == 200){
             Serial.println("Channel update successful.");
-          }
+            }
           else{
             Serial.println("Problem updating channel. HTTP error code " + String(x));
+            }
+        #endif
           }
-          }
-      }
+  
       meas_counter++;
       //delay(50);
       digitalWrite(LEDonBoard, LOW);
@@ -666,7 +652,20 @@ void loop() {
 
     }
     
-  lastButtonState = reading;   
+  lastButtonState = reading;
+  
+    // maybe put this somewhere else...
+    if (screenState == 1) {
+        OLEDshowBMP280(BMP280pres, BMP280temp, BMP280alti);
+        delay(10);
+      }
+    
+    if (screenState == 0) {
+        OLEDshowCO2(co2, temperature, humidity);
+      }
+    neopixel.clear();
+    neopixel.show();
+    printResults();   
 }
 
 
@@ -686,13 +685,16 @@ void printResults()
 #ifdef BMP_IS_ATTACHED
         Serial.print("\t");
         Serial.print("BMB-Pres: ");
-        Serial.print(BMP280preshPa);
+        if (BMP280preshPa == 42949672.00) Serial.print("n.c.");
+        else Serial.print(BMP280preshPa);
         Serial.print("\t");
         Serial.print("Alti: ");
-        Serial.print(BMP280alti);
+        if (BMP280preshPa == 42949672.00) Serial.print("n.c.");
+        else Serial.print(BMP280alti);
         Serial.print("\t");
         Serial.print("BMP-Temp: ");
-        Serial.print(BMP280temp);
+        if (BMP280preshPa == 42949672.00) Serial.print("n.c.");
+        else Serial.print(BMP280temp);
 #endif
 #ifdef DS18x20_IS_ATTACHED
         Serial.print("\t");
@@ -1173,6 +1175,18 @@ const unsigned char logo_sensirion [] PROGMEM = {
 
 // OLED stuffs **********************
 
+void initDisplay()
+{  /* SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+     } 
+     */
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    display.clearDisplay();
+    display.display();
+}
+
 void showLogo_oursci(){
   display.clearDisplay(); // Make sure the display is cleared
   display.drawBitmap(0, 0, oursci_logo, 128, 64, WHITE);  
@@ -1212,7 +1226,7 @@ void OLEDtestBMP280(){
   delay(30);
 }
 
-void OLEDnoBMP280(){
+void OLEDnotinuse(){
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(24,9);
@@ -1236,12 +1250,44 @@ void OLEDtestSCD41(){
   delay(30);
 }
 
-void OLEDtestSuccess(){
-  //display.clearDisplay(); // Make sure the display is cleared
+void OLEDtestDS18b20(){
+  display.clearDisplay(); // Make sure the display is cleared
   display.setTextSize(1);
   display.setTextColor(WHITE);
-  display.setCursor(24,9);
-  display.println("     # SUCCESS ");
+  display.setCursor(4, 0);
+  display.println("DS");
+  display.setCursor(4, 9);
+  display.println("18b20");
+  display.setTextColor(WHITE);
+  display.setCursor(24,0);
+  display.println(" >>  Test DS18b20");
+  display.display();
+  delay(30);
+}
+
+void OLEDtestWiFi(){
+  display.clearDisplay(); // Make sure the display is cleared
+  display.fillRect(0, 0, 128, 16, BLACK);
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(4, 0);
+  display.println("WiFi");
+  display.setCursor(4, 9);
+  display.println(ssid);
+  display.setTextColor(WHITE);
+  display.setCursor(24,0);
+  display.println(" >>  Connecting");
+  display.display();
+  delay(30);
+}
+
+void OLEDtestSuccess(){
+  //display.clearDisplay(); // Make sure the display is cleared
+  display.fillRect(28, 0, 128, 16, BLACK);
+  display.setTextSize(2);
+  display.setTextColor(WHITE);
+  display.setCursor(32,0);
+  display.println("SUCCESS");
   display.display();
   delay(30);
 }
@@ -1447,7 +1493,7 @@ void OLEDshowSCD41(uint16_t ascEnabled, uint16_t alt, float temp)
 void OLEDshowBMP280(uint32_t pa, uint16_t temp, float alt)
 {   int tempRound = temp;
     int altRound = alt;
-    display.fillRect(0, 0, 128, 64, BLACK);
+    display.fillRect(28, 16, 100, 48, BLACK);
     display.drawRect(28, 16, 100, 48, 1); //Border of the bar chart
     display.drawBitmap(0, 0, humus_logo_plant, 128, 64, WHITE);
     
