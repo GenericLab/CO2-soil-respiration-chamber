@@ -554,7 +554,7 @@ void loop() {
     }
 
 #ifdef DS18x20_IS_ATTACHED
-    if (millis() - DS18x20DataTimer >= 30000){
+    if (millis() - DS18x20DataTimer >= 3000){
       DS18x20sensors.requestTemperatures(); 
       soilTemperatureC = DS18x20sensors.getTempCByIndex(0);
       if(soilTemperatureC == DEVICE_DISCONNECTED_C) {
@@ -568,7 +568,7 @@ void loop() {
 #endif
 
 #ifdef BMP_IS_ATTACHED
-    if (millis() - BMP280DataTimer >= 200){
+    if (millis() - BMP280DataTimer >= 300){
     BMP280temp = bmp.readTemperature();
     BMP280pres = bmp.readPressure();
     BMP280alti = bmp.readAltitude(SEA_LEVEL_PRESSURE); /* Adjusted to local forecast! */
@@ -624,6 +624,7 @@ void loop() {
          #ifdef BMP_IS_ATTACHED
           if (BMP280preshPa != 42949672.00) ThingSpeak.setField(1, BMP280temp);
           if (BMP280preshPa != 42949672.00) ThingSpeak.setField(2, BMP280preshPa);
+          if (BMP280preshPa != 42949672.00) ThingSpeak.setField(7, BMP280alti);       
          #endif
           ThingSpeak.setField(3, co2);
           ThingSpeak.setField(4, humidity);
@@ -665,7 +666,8 @@ void loop() {
       }
     neopixel.clear();
     neopixel.show();
-    printResults();   
+    printResults();  
+    delay(500); 
 }
 
 
@@ -765,6 +767,50 @@ void calibrar(uint16_t calPPM)
     
     delay(5000);
 }
+
+
+// """""
+
+void rainbow(uint8_t wait) {
+  uint16_t i, j;
+
+  for(j=0; j<256; j++) {
+    for(i=0; i<neopixel.numPixels(); i++) {
+      neopixel.setPixelColor(i, Wheel((i+j) & 255));
+    }
+    neopixel.show();
+    delay(wait);
+  }
+}
+
+// Slightly different, this makes the rainbow equally distributed throughout
+void rainbowCycle(uint8_t wait) {
+  uint16_t i, j;
+
+  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
+    for(i=0; i< neopixel.numPixels(); i++) {
+      neopixel.setPixelColor(i, Wheel(((i * 256 / neopixel.numPixels()) + j) & 255));
+    }
+    neopixel.show();
+    delay(wait);
+  }
+}
+
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos) {
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return neopixel.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return neopixel.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+  WheelPos -= 170;
+  return neopixel.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+}
+
 
 // 'our-sci_logo', 128x64px  made with http://javl.github.io/image2cpp/
 const unsigned char oursci_logo [] PROGMEM = {
@@ -1594,47 +1640,4 @@ void calDisplay(){
     }
   }
   calCount = 0;
-}
-
-
-// """""
-
-void rainbow(uint8_t wait) {
-  uint16_t i, j;
-
-  for(j=0; j<256; j++) {
-    for(i=0; i<neopixel.numPixels(); i++) {
-      neopixel.setPixelColor(i, Wheel((i+j) & 255));
-    }
-    neopixel.show();
-    delay(wait);
-  }
-}
-
-// Slightly different, this makes the rainbow equally distributed throughout
-void rainbowCycle(uint8_t wait) {
-  uint16_t i, j;
-
-  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
-    for(i=0; i< neopixel.numPixels(); i++) {
-      neopixel.setPixelColor(i, Wheel(((i * 256 / neopixel.numPixels()) + j) & 255));
-    }
-    neopixel.show();
-    delay(wait);
-  }
-}
-
-// Input a value 0 to 255 to get a color value.
-// The colours are a transition r - g - b - back to r.
-uint32_t Wheel(byte WheelPos) {
-  WheelPos = 255 - WheelPos;
-  if(WheelPos < 85) {
-    return neopixel.Color(255 - WheelPos * 3, 0, WheelPos * 3);
-  }
-  if(WheelPos < 170) {
-    WheelPos -= 85;
-    return neopixel.Color(0, WheelPos * 3, 255 - WheelPos * 3);
-  }
-  WheelPos -= 170;
-  return neopixel.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
