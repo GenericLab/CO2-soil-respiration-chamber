@@ -157,7 +157,7 @@ void printSerialNumber(uint16_t serial0, uint16_t serial1, uint16_t serial2) {
 
 #ifdef USE_THINGSPEAK
   #include <WiFi.h>
-  #include "secrets.h"
+  #include "/home/dusjagr/secrets.h"
   #include "ThingSpeak.h" // always include thingspeak header file after other header files and custom macros
   
   char ssid[] = SECRET_SSID;   // your network SSID (name) 
