@@ -12,19 +12,38 @@
  * 
  */
 
-//#define BMP_IS_ATTACHED
+
+#define FEATHERS2
+//#define WEMOS_LOLIN32
+#define BMP_IS_ATTACHED
 //#define DS18x20_IS_ATTACHED
-//#define USE_THINGSPEAK
+#define USE_THINGSPEAK
 
 #include <Arduino.h>
 #include <SensirionI2CScd4x.h>
 #include <Wire.h>
 #include <Adafruit_NeoPixel.h>
 
+#ifdef WEMOS_LOLIN32
+const int LEDonBoard = 0;       // the number of the LED pin
+const int LEDexternal = 2;      // the number of the LED pin
+const int buttonPin = 14;        // the number of the pushbutton pin
+const int cal_pin = 12;           // entrada pulsador calibración
+const int neoPixelPin = 2;          // NeoPixel for UROS board
+#define SDA_PIN 5
+#define SCL_PIN 4
+#endif
+
+#ifdef FEATHERS2
 const int LEDonBoard = 13;       // the number of the LED pin
 const int LEDexternal = 33;      // the number of the LED pin
 const int buttonPin = 38;        // the number of the pushbutton pin
 const int cal_pin = 0;           // entrada pulsador calibración
+const int neoPixelPin = 7;          // NeoPixel for UROS board
+#define SDA_PIN 13
+#define SCL_PIN 14
+#endif
+
 int ledState = LOW;              // ledState used to set the LED
 int buttonState = HIGH;          // the current reading from the input pin
 int lastButtonState = HIGH;      // the previous reading from the input pin
@@ -33,7 +52,6 @@ int screenState = 0;             // different views on the OLED screen
 unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
 
-const int neoPixelPin = 7;          // NeoPixel for UROS board
 const int neoPixelcount = 1;         // How many NeoPixels are attached?
 int neoBrightness = 25;
 
@@ -111,8 +129,9 @@ void printAddress(DeviceAddress deviceAddress)
 #define SCREEN_ADDRESS 0x3C //
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
-uint32_t displayLimit = 1400;
-uint32_t displayFactor = displayLimit / 48;
+uint32_t displayLimit = 4000;
+uint32_t displayLowerLimit = 2000;
+uint32_t displayFactor = (displayLimit-displayLowerLimit) / 48;
 uint32_t meas_counter = 0;
 int32_t thresholdPPM = 450;
 
@@ -212,7 +231,30 @@ void setup() {
     pinMode(cal_pin, INPUT_PULLUP); // entrada pulsado para calibrar, seteada como pulluppara poder conectar pulsador sin poenr resistencia adicional
     
     Serial.println("    ");
-    
+    Serial.println("=========== start Wire i2c ==================");
+    #ifdef WEMOS_LOLIN32
+    Wire.begin(SDA_PIN, SCL_PIN);
+    #endif
+    #ifdef FEATHERS2
+    Wire.begin();
+    #endif
+    Serial.println("    ");
+    Serial.println("=========== Initializing OLED Screen ===========");
+    initDisplay();
+    Serial.println("    ");
+    delay(100);
+
+    showLogo_hackteria();
+    delay(1000);
+
+    showLogo_regosh();
+    delay(1000);
+    showLogo_humus_text();
+    delay(1000);
+
+    display.clearDisplay();
+
+    Serial.println("    ");
     Serial.println("=========== Turn on NEO Pixel ==================");
     neopixel.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
     delay(100);
@@ -223,29 +265,8 @@ void setup() {
     //rainbow(5);             // Flowing rainbow cycle along the whole strip
     //rainbowCycle(5);
     neopixel.setPixelColor(0, neopixel.Color(255, 0, 255));
-    neopixel.show();
-    
-
+    neopixel.show();    
     Serial.println("    ");
-    Serial.println("=========== Initializing OLED Screen ===========");
-    initDisplay();
-    Serial.println("    ");
-    delay(100);
-
-    showLogo_hackteria();
-    delay(1000);
-    neopixel.clear();
-    neopixel.show();
-    showLogo_regosh();
-    delay(1000);
-    showLogo_humus_text();
-    delay(1000);
-    neopixel.clear();
-    neopixel.show();
-    display.clearDisplay();
-
-    Serial.println("    ");
-        
     Serial.println("=========== Turn on Wifi ==================");
 
 #ifdef USE_THINGSPEAK
@@ -578,7 +599,7 @@ void loop() {
     #endif
     
     // Read Measurement
-
+      /*
       error = scd4x.readMeasurement(co2, temperature, humidity);
       if (error) {
           Serial.print("Error trying to execute readMeasurement(): ");
@@ -616,7 +637,7 @@ void loop() {
             }
         #endif
           }
-  
+      */
       meas_counter++;
       //delay(50);
       digitalWrite(LEDonBoard, LOW);
@@ -633,12 +654,22 @@ void loop() {
       }
     
     if (screenState == 0) {
-        OLEDshowCO2(co2, temperature, humidity);
+        OLEDshowCO2(BMP280temp, BMP280pres, BMP280alti);
       }
     neopixel.clear();
     neopixel.show();
-    printResults();  
-    delay(500); 
+    printResults(); 
+          if (BMP280preshPa != 42949672.00) ThingSpeak.setField(1, BMP280temp);
+          if (BMP280preshPa != 42949672.00) ThingSpeak.setField(2, BMP280preshPa);
+          if (BMP280preshPa != 42949672.00) ThingSpeak.setField(7, BMP280alti); 
+          int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+          if(x == 200){
+            Serial.println("Channel update successful.");
+            }
+          else{
+            Serial.println("Problem updating channel. HTTP error code " + String(x));
+            }
+    delay(30000); 
 }
 
 
@@ -1199,7 +1230,8 @@ void initDisplay()
     for(;;); // Don't proceed, loop forever
      } 
      */
-    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C, false, false);
+    //display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
     display.clearDisplay();
     display.display();
 }
@@ -1392,10 +1424,10 @@ void OLEDdrawBackground()
 {
     display.clearDisplay();
     for (int i = 28; i <= 128; i = i + 3) {
-        display.drawPixel(i, 64 - (400 / displayFactor), WHITE);
+        display.drawPixel(i, 64 - (200 / displayFactor), WHITE);
     }
     for (int i = 28; i <= 128; i = i + 5) {
-        display.drawPixel(i, 64 - ((displayLimit-200) / displayFactor), WHITE);
+        display.drawPixel(i, 64 - ((displayLimit-500-displayLowerLimit) / displayFactor), WHITE);
     }
     /*
     for (int i = 28; i <= 128; i = i + 7) {
@@ -1407,20 +1439,71 @@ void OLEDdrawBackground()
     display.setTextSize(1);
     display.setTextColor(WHITE);
     display.setCursor(100, 21);
-    display.println(displayLimit-200);
-    display.setCursor(108, 46);
-    display.println("400");
+    display.print((displayLimit-500)/100);
+    display.println(" C");
+    display.setCursor(100, 46);
+    display.print((displayLowerLimit)/100);
+    display.println(" C");
     display.setTextSize(1);
     display.fillRect(29, 46, 70, 17, BLACK);
     display.setCursor(30, 47);
     //display.println("HUMUS.Sapiens");
     display.setCursor(36, 55);
-    display.println("CO2 Respiration");
+    display.println("Temperature");
     display.drawBitmap(0, 0, humus_logo_plant, 128, 64, WHITE);
     display.display();
 }
 
-void OLEDshowCO2(uint16_t ppm, float temp, float hum)
+void OLEDshowCO2(float ppm, float temp, float hum)
+{   int tempRound = temp/100;
+    int humRound = hum;
+    display.setTextSize(1);
+    display.fillRect(0, 0, 128, 16, BLACK);
+    display.setTextColor(WHITE);
+    display.setCursor(48, 0);
+    display.println("T");
+    display.setCursor(48, 7);
+    display.println("C");
+    display.setTextSize(2);
+    display.setCursor(56, 0);
+    display.print(":");
+    display.print(ppm);
+    display.setTextSize(1);
+    display.setCursor(4, 0);
+    display.print(tempRound);
+    display.println("hPa");
+    display.setCursor(4, 9);
+    display.print(humRound);
+    display.println("m");
+/*
+    if (meas_counter > 0) {
+        display.drawLine(meas_counter - 1 + 28, 64 - last_ppm_high_res() / displayFactor, meas_counter + 28, 64 - current->ppm / displayFactor, WHITE);
+    }
+*/
+    if (meas_counter >= 0) {
+        display.drawLine(meas_counter + 28, 64 - 0 / displayFactor, meas_counter + 28, 64 - ((ppm*100)-displayLowerLimit) / displayFactor, WHITE);
+    }
+
+    if (meas_counter > 100) {
+        meas_counter = 0;
+        OLEDdrawBackground();
+    }
+/*
+    if (ppm > thresholdPPM) {
+        if (last_ppm_high_res() < thresholdPPM) {
+            display.setTextSize(1);
+            display.setCursor(h_head + 3, thresholdPPM / displayFactor + 10);
+            display.print((millis() - started) / 1000);
+            display.println("s");
+        }
+    }
+*/
+
+    display.display();
+    delay(30);
+}
+
+void OLEDgraphTEMP(uint16_t ppm, float temp, float hum)
 {   int tempRound = temp;
     int humRound = hum;
     display.setTextSize(1);
