@@ -55,7 +55,7 @@ unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
 
 const int neoPixelcount = 1;         // How many NeoPixels are attached?
-int neoBrightness = 255;
+int neoBrightness = 25;
 
   float BMP280temp = -1;
   float BMP280preshPa = -1;
@@ -533,6 +533,9 @@ void setup() {
 void loop() {
     digitalWrite(LEDonBoard, HIGH);
     digitalWrite(LEDexternal, HIGH);
+    //neopixel.setPixelColor(0, neopixel.Color(255, 150, 0));
+    neopixel.clear();
+    neopixel.show();
     int reading = digitalRead(buttonPin);
     if (reading != lastButtonState) {
       // reset the debouncing timer
@@ -575,6 +578,8 @@ void loop() {
     if (millis() - BMP280DataTimer >= 300){
       digitalWrite(LEDonBoard, LOW);
       digitalWrite(LEDexternal, LOW);
+      neopixel.setPixelColor(0, neopixel.Color(105, 50, 0));
+      neopixel.show();
       BMP280temp = bmp.readTemperature();
       BMP280pres = bmp.readPressure();
       BMP280alti = bmp.readAltitude(SEA_LEVEL_PRESSURE); /* Adjusted to local forecast! */
@@ -606,7 +611,7 @@ void loop() {
       } else {
           SCD41DataTimer = millis();
       }
-      delay(50); 
+      delay(200); 
       neopixel.clear();
       neopixel.show();
       //meas_counter++;
@@ -630,6 +635,8 @@ void loop() {
     #ifdef USE_THINGSPEAK
       if (millis() - thingspeakDataTimer >= 30000){
         Serial.println("Checking WiFi");
+        neopixel.clear();
+        neopixel.show();
         connectWifi();
         Serial.println("Sending measurements");
          #ifdef BMP_IS_ATTACHED
@@ -647,6 +654,9 @@ void loop() {
           int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
           if(x == 200){
             Serial.println("Channel update successful.");
+            neopixel.setPixelColor(0, neopixel.Color(0, 0, 255));
+            neopixel.show();
+            delay(200); 
             }
           else{
             Serial.println("Problem updating channel. HTTP error code " + String(x));
@@ -655,7 +665,7 @@ void loop() {
       }
     #endif
     
-    delay(3); 
+    delay(30); 
 }
 
 
