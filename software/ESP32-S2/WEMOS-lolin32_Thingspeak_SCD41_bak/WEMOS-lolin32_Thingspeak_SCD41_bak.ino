@@ -1,3 +1,5 @@
+
+
  /*
  * dusjagr edited some stuffs...
  * Adding display
@@ -13,6 +15,8 @@
 
 //#define FEATHERS2
 #define WEMOS_LOLIN32
+
+#define SCD41_IS_ATTACHED
 #define BMP_IS_ATTACHED
 //#define DS18x20_IS_ATTACHED
 #define USE_THINGSPEAK
@@ -32,24 +36,14 @@ const int neoPixelPin = 2;          // NeoPixel for UROS board
 #define SCL_PIN 18
 #endif
 
-//#ifdef WEMOS_LOLIN32 //with OLED onboard
-//const int LEDonBoard = 0;       // the number of the LED pin
-//const int LEDexternal = 2;      // the number of the LED pin
-//const int buttonPin = 14;        // the number of the pushbutton pin
-//const int cal_pin = 12;           // entrada pulsador calibración
-//const int neoPixelPin = 2;          // NeoPixel for UROS board
-//#define SDA_PIN 5
-//#define SCL_PIN 4
-//#endif
-
 #ifdef FEATHERS2
 const int LEDonBoard = 13;       // the number of the LED pin
 const int LEDexternal = 33;      // the number of the LED pin
 const int buttonPin = 38;        // the number of the pushbutton pin
 const int cal_pin = 0;           // entrada pulsador calibración
 const int neoPixelPin = 7;          // NeoPixel for UROS board
-#define SDA_PIN 8
-#define SCL_PIN 9
+#define SDA_PIN 13
+#define SCL_PIN 14
 #endif
 
 int ledState = LOW;              // ledState used to set the LED
@@ -61,7 +55,7 @@ unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
 
 const int neoPixelcount = 1;         // How many NeoPixels are attached?
-int neoBrightness = 25;
+int neoBrightness = 255;
 
   float BMP280temp = -1;
   float BMP280preshPa = -1;
@@ -75,7 +69,7 @@ Adafruit_NeoPixel neopixel(neoPixelcount, neoPixelPin, NEO_GRB + NEO_KHZ800);
 // SCD41 calibration settings *******
 // ==================================
 
-uint16_t alt = 15;
+uint16_t alt = 132;
 uint32_t pressureCalibration;
 float tempOffset = 2.0;
 bool ascSetting = false; // Turn automatic self calibration off
@@ -145,14 +139,12 @@ int32_t thresholdPPM = 450;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-// """"""""""""""""""""""""""""""""""
-
 // Sensirion SCD4x stuffs ***********
 // ==================================
 
 SensirionI2CScd4x scd4x;
 
-unsigned long getDataTimer = 0;
+unsigned long SCD41DataTimer = 0;
 unsigned long TimeSec = 0;
 unsigned long timeElapse = 0;//used to wait the sensor to stabilize before calibration
 uint16_t error;
@@ -177,8 +169,6 @@ void printSerialNumber(uint16_t serial0, uint16_t serial1, uint16_t serial2) {
 }
 
 
-
-
 // THINGSSPEAK ********************
 // ==================================
 
@@ -191,8 +181,7 @@ void printSerialNumber(uint16_t serial0, uint16_t serial1, uint16_t serial2) {
   char pass[] = SECRET_PASS;   // your network password
   int keyIndex = 0;            // your network key Index number (needed only for WEP)
   WiFiClient  client;
-
-  unsigned long thingspeakDataTimer = 0; 
+  unsigned long thingspeakDataTimer = 0;
   unsigned long myChannelNumber = SECRET_CH_ID;
   const char * myWriteAPIKey = SECRET_WRITE_APIKEY;
 
@@ -241,9 +230,12 @@ void setup() {
     
     Serial.println("    ");
     Serial.println("=========== start Wire i2c ==================");
-
+    #ifdef WEMOS_LOLIN32
     Wire.begin(SDA_PIN, SCL_PIN);
-
+    #endif
+    #ifdef FEATHERS2
+    Wire.begin();
+    #endif
     Serial.println("    ");
     Serial.println("=========== Initializing OLED Screen ===========");
     initDisplay();
@@ -279,7 +271,8 @@ void setup() {
     WiFi.mode(WIFI_STA);   
     ThingSpeak.begin(client);  // Initialize ThingSpeak
     Serial.println("Starting WiFi");
-    
+    neopixel.clear();
+    neopixel.show();
     connectWifi();
 #endif
 
@@ -523,10 +516,23 @@ void setup() {
         
     Serial.println("============= Starting Measurements ============");
     OLEDdrawBackground();
+    #ifdef USE_THINGSPEAK
+      thingspeakDataTimer = millis();
+    #endif
+    #ifdef DS18x20_IS_ATTACHED
+      DS18x20DataTimer = millis();
+    #endif
+    #ifdef BMP_IS_ATTACHED
+      BMP280DataTimer = millis();
+    #endif
+    #ifdef SCD41_IS_ATTACHED
+      SCD41DataTimer = millis();
+    #endif
 }
 
 void loop() {
-
+    digitalWrite(LEDonBoard, LOW);
+    digitalWrite(LEDexternal, LOW);
     int reading = digitalRead(buttonPin);
     if (reading != lastButtonState) {
       // reset the debouncing timer
@@ -567,24 +573,29 @@ void loop() {
 
 #ifdef BMP_IS_ATTACHED
     if (millis() - BMP280DataTimer >= 300){
-    BMP280temp = bmp.readTemperature();
-    BMP280pres = bmp.readPressure();
-    BMP280alti = bmp.readAltitude(SEA_LEVEL_PRESSURE); /* Adjusted to local forecast! */
-    BMP280preshPa = BMP280pres;
-    BMP280preshPa = BMP280preshPa / 100;  
-    BMP280DataTimer = millis();
-    TimeSec = BMP280DataTimer / 1000;
-    
+      digitalWrite(LEDonBoard, HIGH);
+      digitalWrite(LEDexternal, HIGH);
+      BMP280temp = bmp.readTemperature();
+      BMP280pres = bmp.readPressure();
+      BMP280alti = bmp.readAltitude(SEA_LEVEL_PRESSURE); /* Adjusted to local forecast! */
+      BMP280preshPa = BMP280pres;
+      BMP280preshPa = BMP280preshPa / 100;  
+      BMP280DataTimer = millis();
+      TimeSec = BMP280DataTimer / 1000;
+      meas_counter++;
+      printResults();
+    }
 #endif
 
 // read the SCD41 CO2 Sensor
 
-    if (millis() - getDataTimer >= 5000){
+    if (millis() - SCD41DataTimer >= 20000){
+      
       neopixel.setPixelColor(0, neopixel.Color(255, 0, 255));
       neopixel.show();
-    
-    // Read Measurement
-      /*
+      
+    // Read Measurement from SCD41 CO2 sensor
+      
       error = scd4x.readMeasurement(co2, temperature, humidity);
       if (error) {
           Serial.print("Error trying to execute readMeasurement(): ");
@@ -593,38 +604,13 @@ void loop() {
       } else if (co2 == 0) {
           Serial.println("Invalid sample detected, skipping.");
       } else {
-          getDataTimer = millis();
-          TimeSec = getDataTimer / 1000;
-          
-        #ifdef USE_THINGSPEAK
-          Serial.println("Sending measurements");
-         #ifdef BMP_IS_ATTACHED
-          if (BMP280preshPa != 42949672.00) ThingSpeak.setField(1, BMP280temp);
-          if (BMP280preshPa != 42949672.00) ThingSpeak.setField(2, BMP280preshPa);
-          if (BMP280preshPa != 42949672.00) ThingSpeak.setField(7, BMP280alti);       
-         #endif
-          ThingSpeak.setField(3, co2);
-          ThingSpeak.setField(4, humidity);
-         #ifdef DS18x20_IS_ATTACHED
-          ThingSpeak.setField(5, soilTemperatureC);
-         #endif
-          
-          // set the status
-          //ThingSpeak.setStatus("dusjagr is chilling at the beach");
+          SCD41DataTimer = millis();
+      }
+      delay(50); 
+      neopixel.clear();
+      neopixel.show();
+      //meas_counter++;
         
-          // write to the ThingSpeak channel
-          int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
-          if(x == 200){
-            Serial.println("Channel update successful.");
-            }
-          else{
-            Serial.println("Problem updating channel. HTTP error code " + String(x));
-            }
-        #endif
-          }
-      */
-      meas_counter++;
-
     }
     
   lastButtonState = reading;
@@ -638,36 +624,26 @@ void loop() {
     if (screenState == 0) {
         OLEDshowCO2(BMP280temp, BMP280pres, BMP280alti);
       }
-    neopixel.clear();
-    neopixel.show();
-    digitalWrite(LEDonBoard, LOW);
-    digitalWrite(LEDexternal, LOW);
-    printResults(); 
-
-
-#ifdef USE_THINGSPEAK
-
-    if (millis() - thingspeakDataTimer >= 30000){
-
+      
+    //printResults(); 
+    
+    #ifdef USE_THINGSPEAK
+      if (millis() - thingspeakDataTimer >= 30000){
         Serial.println("Checking WiFi");
         connectWifi();
-
-      Serial.println("Sending measurements");
+        Serial.println("Sending measurements");
          #ifdef BMP_IS_ATTACHED
           if (BMP280preshPa != 42949672.00) ThingSpeak.setField(1, BMP280temp);
           if (BMP280preshPa != 42949672.00) ThingSpeak.setField(2, BMP280preshPa);
           if (BMP280preshPa != 42949672.00) ThingSpeak.setField(7, BMP280alti);       
          #endif
-          //ThingSpeak.setField(3, co2);
-          //ThingSpeak.setField(4, humidity);
+         #ifdef SCD41_IS_ATTACHED
+          ThingSpeak.setField(3, co2);
+          ThingSpeak.setField(4, humidity);
+         #endif
          #ifdef DS18x20_IS_ATTACHED
           ThingSpeak.setField(5, soilTemperatureC);
          #endif
-          
-          // set the status
-          //ThingSpeak.setStatus("dusjagr is chilling at the beach");
-        
-          // write to the ThingSpeak channel
           int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
           if(x == 200){
             Serial.println("Channel update successful.");
@@ -675,12 +651,11 @@ void loop() {
           else{
             Serial.println("Problem updating channel. HTTP error code " + String(x));
             }
-      thingspeakDataTimer = millis();
-      
-    }    
-#endif
-     
-    delay(30); 
+          thingspeakDataTimer = millis();
+      }
+    #endif
+    
+    delay(3); 
 }
 
 
