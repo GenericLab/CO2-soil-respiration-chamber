@@ -531,8 +531,8 @@ void setup() {
 }
 
 void loop() {
-    digitalWrite(LEDonBoard, LOW);
-    digitalWrite(LEDexternal, LOW);
+    digitalWrite(LEDonBoard, HIGH);
+    digitalWrite(LEDexternal, HIGH);
     int reading = digitalRead(buttonPin);
     if (reading != lastButtonState) {
       // reset the debouncing timer
@@ -573,8 +573,8 @@ void loop() {
 
 #ifdef BMP_IS_ATTACHED
     if (millis() - BMP280DataTimer >= 300){
-      digitalWrite(LEDonBoard, HIGH);
-      digitalWrite(LEDexternal, HIGH);
+      digitalWrite(LEDonBoard, LOW);
+      digitalWrite(LEDexternal, LOW);
       BMP280temp = bmp.readTemperature();
       BMP280pres = bmp.readPressure();
       BMP280alti = bmp.readAltitude(SEA_LEVEL_PRESSURE); /* Adjusted to local forecast! */
