@@ -131,8 +131,8 @@ void printAddress(DeviceAddress deviceAddress)
 #define SCREEN_ADDRESS 0x3C //
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
-uint32_t displayLimit = 4000;
-uint32_t displayLowerLimit = 2000;
+uint32_t displayLimit = 1500;
+uint32_t displayLowerLimit = 0;
 uint32_t displayFactor = (displayLimit-displayLowerLimit) / 48;
 uint32_t meas_counter = 0;
 int32_t thresholdPPM = 450;
@@ -515,7 +515,8 @@ void setup() {
     delay(1000);
         
     Serial.println("============= Starting Measurements ============");
-    OLEDdrawBackground();
+    if (screenState == 1) OLEDdrawBackgroundTemp();
+    if (screenState == 0) OLEDdrawBackground();
     #ifdef USE_THINGSPEAK
       thingspeakDataTimer = millis();
     #endif
@@ -587,14 +588,14 @@ void loop() {
       BMP280preshPa = BMP280preshPa / 100;  
       BMP280DataTimer = millis();
       TimeSec = BMP280DataTimer / 1000;
-      meas_counter++;
+      if (screenState == 1) meas_counter++;
       printResults();
     }
 #endif
 
 // read the SCD41 CO2 Sensor
 
-    if (millis() - SCD41DataTimer >= 20000){
+    if (millis() - SCD41DataTimer >= 5000){
       
       neopixel.setPixelColor(0, neopixel.Color(255, 0, 255));
       neopixel.show();
@@ -614,20 +615,24 @@ void loop() {
       delay(200); 
       neopixel.clear();
       neopixel.show();
-      //meas_counter++;
+      if (screenState == 0) meas_counter++;
         
     }
     
   lastButtonState = reading;
   
     // maybe put this somewhere else...
-    if (screenState == 1) {
-        OLEDshowBMP280(BMP280pres, BMP280temp, BMP280alti);
-        delay(10);
+    if (screenState == 0) {
+        displayLimit = 1500;
+        displayLowerLimit = 0;
+        OLEDshowCO2(co2, temperature, humidity);
+        //delay(10);
       }
     
-    if (screenState == 0) {
-        OLEDshowCO2(BMP280temp, BMP280pres, BMP280alti);
+    if (screenState == 1) {
+        displayLimit = 4000;
+        displayLowerLimit = 2500;
+        OLEDgraphTEMP(BMP280temp, BMP280pres, BMP280alti);
       }
       
     //printResults(); 
@@ -1420,6 +1425,40 @@ void OLEDdrawBackground()
 {
     display.clearDisplay();
     for (int i = 28; i <= 128; i = i + 3) {
+        display.drawPixel(i, 64 - (400 / displayFactor), WHITE);
+    }
+    for (int i = 28; i <= 128; i = i + 5) {
+        display.drawPixel(i, 64 - ((displayLimit-500-displayLowerLimit) / displayFactor), WHITE);
+    }
+    /*
+    for (int i = 28; i <= 128; i = i + 7) {
+        display.drawPixel(i, 64 - (3000 / displayFactor), WHITE);
+    }
+    */
+    display.drawRect(28, 16, 100, 48, 1); //Border of the bar chart
+
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(100, 21);
+    display.print((displayLimit-300)/1);
+    display.println("");
+    display.setCursor(100, 46);
+    display.print(" 400");
+    display.println("");
+    display.setTextSize(1);
+    display.fillRect(29, 46, 70, 17, BLACK);
+    display.setCursor(30, 47);
+    //display.println("HUMUS.Sapiens");
+    display.setCursor(36, 55);
+    display.println("CO2 respiration");
+    display.drawBitmap(0, 0, humus_logo_plant, 128, 64, WHITE);
+    display.display();
+}
+
+void OLEDdrawBackgroundTemp()
+{
+    display.clearDisplay();
+    for (int i = 28; i <= 128; i = i + 3) {
         display.drawPixel(i, 64 - (200 / displayFactor), WHITE);
     }
     for (int i = 28; i <= 128; i = i + 5) {
@@ -1450,16 +1489,16 @@ void OLEDdrawBackground()
     display.display();
 }
 
-void OLEDshowCO2(float ppm, float temp, float hum)
-{   int tempRound = temp/100;
+void OLEDshowCO2(uint16_t ppm, float temp, float hum)
+{   int tempRound = temp/1;
     int humRound = hum;
     display.setTextSize(1);
     display.fillRect(0, 0, 128, 16, BLACK);
     display.setTextColor(WHITE);
-    display.setCursor(48, 0);
-    display.println("T");
-    display.setCursor(48, 7);
-    display.println("C");
+    display.setCursor(40, 0);
+    display.println("CO2");
+    display.setCursor(40, 7);
+    display.println("ppm");
     display.setTextSize(2);
     display.setCursor(56, 0);
     display.print(":");
@@ -1467,17 +1506,17 @@ void OLEDshowCO2(float ppm, float temp, float hum)
     display.setTextSize(1);
     display.setCursor(4, 0);
     display.print(tempRound);
-    display.println("hPa");
+    display.println("C");
     display.setCursor(4, 9);
     display.print(humRound);
-    display.println("m");
+    display.println("%");
 /*
     if (meas_counter > 0) {
         display.drawLine(meas_counter - 1 + 28, 64 - last_ppm_high_res() / displayFactor, meas_counter + 28, 64 - current->ppm / displayFactor, WHITE);
     }
 */
     if (meas_counter >= 0) {
-        display.drawLine(meas_counter + 28, 64 - 0 / displayFactor, meas_counter + 28, 64 - ((ppm*100)-displayLowerLimit) / displayFactor, WHITE);
+        display.drawLine(meas_counter + 28, 64 - 0 / displayFactor, meas_counter + 28, 64 - ((ppm*1)-displayLowerLimit) / displayFactor, WHITE);
     }
 
     if (meas_counter > 100) {
@@ -1499,39 +1538,39 @@ void OLEDshowCO2(float ppm, float temp, float hum)
     delay(30);
 }
 
-void OLEDgraphTEMP(uint16_t ppm, float temp, float hum)
-{   int tempRound = temp;
-    int humRound = hum;
+void OLEDgraphTEMP(float temp, float pres, float alt)
+{   int presRound = pres/100;
+    int altRound = alt;
     display.setTextSize(1);
     display.fillRect(0, 0, 128, 16, BLACK);
     display.setTextColor(WHITE);
-    display.setCursor(38, 0);
-    display.println("CO2");
-    display.setCursor(38, 7);
-    display.println("ppm");
+    display.setCursor(48, 0);
+    display.println("T");
+    display.setCursor(48, 7);
+    display.println("C");
     display.setTextSize(2);
     display.setCursor(56, 0);
     display.print(":");
-    display.print(ppm);
+    display.print(temp);
     display.setTextSize(1);
     display.setCursor(4, 0);
-    display.print(tempRound);
-    display.println("T");
+    display.print(presRound);
+    display.println("hPa");
     display.setCursor(4, 9);
-    display.print(humRound);
-    display.println("%");
+    display.print(altRound);
+    display.println("m");
 /*
     if (meas_counter > 0) {
         display.drawLine(meas_counter - 1 + 28, 64 - last_ppm_high_res() / displayFactor, meas_counter + 28, 64 - current->ppm / displayFactor, WHITE);
     }
 */
     if (meas_counter >= 0) {
-        display.drawLine(meas_counter - 0 + 28, 64 - 400 / displayFactor, meas_counter + 28, 64 - ppm / displayFactor, WHITE);
+        display.drawLine(meas_counter + 28, 64 - 0 / displayFactor, meas_counter + 28, 64 - ((temp*100)-displayLowerLimit) / displayFactor, WHITE);
     }
 
     if (meas_counter > 100) {
         meas_counter = 0;
-        OLEDdrawBackground();
+        OLEDdrawBackgroundTemp();
     }
 /*
     if (ppm > thresholdPPM) {
