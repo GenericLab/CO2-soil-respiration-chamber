@@ -1,5 +1,4 @@
 
-
  /*
  * dusjagr edited some stuffs...
  * Adding display
@@ -13,14 +12,14 @@
  */
 
 
-//#define FEATHERS2
-#define FEATHERS3
+#define FEATHERS2
+//#define FEATHERS3
 //#define WEMOS_LOLIN32
 
 #define SCD41_IS_ATTACHED
 //#define BMP_IS_ATTACHED
 #define DS18x20_IS_ATTACHED
-#define USE_THINGSPEAK
+//#define USE_THINGSPEAK
 
 #ifdef USE_THINGSPEAK
   #include "/home/dusjagr/secrets.h"
@@ -119,7 +118,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 uint16_t alt = 295; //Ljubljana, Slovenia
 //uint16_t alt = 731; //Trubschachen, Emmental
 uint32_t pressureCalibration;
-float tempOffset = 4.1;
+float tempOffset = 0.1;
 bool ascSetting = false; // Turn automatic self calibration off
 
 // DS18x20 stuffs *******************
@@ -252,6 +251,7 @@ void setup() {
     adc1_config_width(ADC_WIDTH_BIT_13);
     adc1_config_channel_atten(ADC1_CHANNEL_4,ADC_ATTEN_DB_11);
     #endif
+    
 
     Serial.println("    ");
     Serial.println("=========== Booting ROŠA System ===========");
@@ -624,7 +624,11 @@ void loop() {
 
     batCounter = batCounter + 1;
     ADCValue =  adc1_get_raw(ADC1_CHANNEL_5);
-    voltage = voltage + map(ADCValue, 0, 8191, 0, 5330);
+    // voltage = voltage + map(ADCValue, 0, 1765, 0, 3300); //S3
+
+    voltage = voltage + map(ADCValue, 0, 8191, 0, 5330); //S2
+    
+    //voltage = ADCValue;
 
     if (batCounter >= batAveraging) {
         battery = voltage / batAveraging;
@@ -704,13 +708,14 @@ void loop() {
         connectWifi();
         Serial.println("Sending measurements");
          #ifdef BMP_IS_ATTACHED
-          if (BMP280preshPa != 42949672.00) ThingSpeak.setField(1, BMP280temp);
+          //if (BMP280preshPa != 42949672.00) ThingSpeak.setField(1, BMP280temp);
           if (BMP280preshPa != 42949672.00) ThingSpeak.setField(2, BMP280preshPa);
           if (BMP280preshPa != 42949672.00) ThingSpeak.setField(7, BMP280alti);       
          #endif
          #ifdef SCD41_IS_ATTACHED
           ThingSpeak.setField(3, co2);
           ThingSpeak.setField(4, humidity);
+          ThingSpeak.setField(1, temperature);
           ThingSpeak.setField(6, battery);
          #endif
          #ifdef DS18x20_IS_ATTACHED
@@ -768,6 +773,12 @@ void printResults()
         Serial.print("\t");
         Serial.print("Bat: ");
         Serial.print(battery/1000);
+        Serial.print("\t");
+        Serial.print("ADC: ");
+        //Serial.print(battery/1000);
+        Serial.print(ADCValue);
+
+        
         
 #ifdef BMP_IS_ATTACHED
         Serial.print("\t");

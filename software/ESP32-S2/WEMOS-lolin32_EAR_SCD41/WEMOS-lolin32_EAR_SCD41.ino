@@ -14,13 +14,13 @@
 
 
 //#define FEATHERS2
-#define FEATHERS3
-//#define WEMOS_LOLIN32
+//#define FEATHERS3
+#define WEMOS_LOLIN32
 
 #define SCD41_IS_ATTACHED
 //#define BMP_IS_ATTACHED
-#define DS18x20_IS_ATTACHED
-#define USE_THINGSPEAK
+//#define DS18x20_IS_ATTACHED
+//#define USE_THINGSPEAK
 
 #ifdef USE_THINGSPEAK
   #include "/home/dusjagr/secrets.h"
@@ -36,20 +36,10 @@
 const int analogInPin = 5;  // Analog input pin that the potentiometer is attached to
 uint32_t ADCValue = 0;        // value read from the pot
 uint32_t voltage = 0;
-uint32_t batAveraging = 500; //what is the maximum??
+uint32_t batAveraging = 10; //what is the maximum??
 int batCounter = 0;          // to count to the maximum averaging
 float battery = 0;           // averaged value of voltage
 
-#ifdef FEATHERS3
-const int LEDonBoard = 13;       // the number of the LED pin
-//const int LEDexternal = 33;      // the number of the LED pin
-const int LEDexternal = 10;      // 2nd LDO on GPIO21
-const int buttonPin = 11;        // the number of the pushbutton pin
-const int cal_pin = 3;           // entrada pulsador calibración
-const int neoPixelPin = 40;          // NeoPixel for UROS board
-#define SDA_PIN 9
-#define SCL_PIN 8
-#endif
 
 #ifdef WEMOS_LOLIN32 // LITE
 const int LEDonBoard = 21;       // the number of the LED pin
@@ -65,7 +55,7 @@ const int neoPixelPin = 2;          // NeoPixel for UROS board
 const int LEDonBoard = 13;       // the number of the LED pin
 //const int LEDexternal = 33;      // the number of the LED pin
 const int LEDexternal = 21;      // 2nd LDO on GPIO21
-const int buttonPin = 38;        // the number of the pushbutton pin
+const int buttonPin = 15;        // the number of the pushbutton pin
 const int cal_pin = 0;           // entrada pulsador calibración
 const int neoPixelPin = 7;          // NeoPixel for UROS board
 #define SDA_PIN 13
@@ -115,11 +105,9 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // SCD41 calibration settings *******
 // ==================================
 
-//uint16_t alt = 274; //Maribor, Slovenia
-uint16_t alt = 295; //Ljubljana, Slovenia
-//uint16_t alt = 731; //Trubschachen, Emmental
+uint16_t alt = 731; //Trubschachen, Emmental
 uint32_t pressureCalibration;
-float tempOffset = 4.1;
+float tempOffset = 2.0;
 bool ascSetting = false; // Turn automatic self calibration off
 
 // DS18x20 stuffs *******************
@@ -133,7 +121,7 @@ bool ascSetting = false; // Turn automatic self calibration off
   #include <DallasTemperature.h>
 
   // GPIO where the DS18B20 is connected to
-  const int oneWireBus = 10;  
+  const int oneWireBus = 19;  
   unsigned long DS18x20DataTimer = 0;   
   OneWire oneWire(oneWireBus);
   DallasTemperature DS18x20sensors(&oneWire);
@@ -248,10 +236,10 @@ void setup() {
     Serial.begin(115200);
     //while ( !Serial ) delay(100);   // wait for native usb
     delay(500);
-    #ifdef FEATHERS2
-    adc1_config_width(ADC_WIDTH_BIT_13);
-    adc1_config_channel_atten(ADC1_CHANNEL_4,ADC_ATTEN_DB_11);
-    #endif
+    //#ifdef FEATHERS2
+    adc1_config_width(ADC_WIDTH_BIT_10);
+    adc1_config_channel_atten(ADC1_CHANNEL_5,ADC_ATTEN_DB_11);
+    //#endif
 
     Serial.println("    ");
     Serial.println("=========== Booting ROŠA System ===========");
@@ -280,9 +268,6 @@ void setup() {
     #ifdef FEATHERS2
     Wire.begin();
     #endif
-    #ifdef FEATHERS3
-    Wire.begin();
-    #endif
     Serial.println("    ");
     Serial.println("=========== Initializing OLED Screen ===========");
     initDisplay();
@@ -291,7 +276,8 @@ void setup() {
 
     showLogo_hackteria();
     delay(1000);
-
+    showLogo_ear();
+    delay(1000);
     showLogo_regosh();
     delay(1000);
     showLogo_humus_text();
@@ -550,16 +536,18 @@ void setup() {
     OLEDshowSCD41(ascEnabled, setAlt, settempOffset);
     delay(1000);
     Serial.println("..");
+    showLogo_ear();
     delay(1000);
-    OLEDstartMeasurements();
+    //OLEDstartMeasurements();
     Serial.println("...");
     delay(1000);
-    showLogo_sensirion();
+    //showLogo_sensirion();
     Serial.println("....");
     delay(1000);
+    showLogo_ear();
     
     Serial.println(".....");
-    delay(1000);
+    delay(2000);
         
     Serial.println("============= Starting Measurements ============");
     if (screenState == 1) OLEDdrawBackgroundTemp();
@@ -624,7 +612,7 @@ void loop() {
 
     batCounter = batCounter + 1;
     ADCValue =  adc1_get_raw(ADC1_CHANNEL_5);
-    voltage = voltage + map(ADCValue, 0, 8191, 0, 5330);
+    voltage = voltage + map(ADCValue, 0, 1023, 0, 6830);
 
     if (batCounter >= batAveraging) {
         battery = voltage / batAveraging;
@@ -634,7 +622,7 @@ void loop() {
 
 
 #ifdef DS18x20_IS_ATTACHED
-    if (millis() - DS18x20DataTimer >= 3000){
+    if (millis() - DS18x20DataTimer >= 1000){
       DS18x20sensors.requestTemperatures(); 
       soilTemperatureC = DS18x20sensors.getTempCByIndex(0);
       if(soilTemperatureC == DEVICE_DISCONNECTED_C) {
@@ -643,8 +631,9 @@ void loop() {
         //return;
         }
       DS18x20DataTimer = millis();
+      //TimeSec = DS18x20DataTimer / 1000;
       if (screenState == 1) meas_counter++;
-      //printResults();
+      printResults();
     }    
 #endif
 
@@ -660,7 +649,7 @@ void loop() {
       BMP280preshPa = BMP280pres;
       BMP280preshPa = BMP280preshPa / 100;  
       BMP280DataTimer = millis();
-      TimeSec = BMP280DataTimer / 1000;
+      //TimeSec = BMP280DataTimer / 1000;
       //if (screenState == 1) meas_counter++;
       //printResults();
     }
@@ -685,6 +674,7 @@ void loop() {
           Serial.println("Invalid sample detected, skipping.");
       } else {
           SCD41DataTimer = millis();
+          TimeSec = SCD41DataTimer / 1000;
       }
       delay(200); 
       neopixel.clear();
@@ -704,11 +694,12 @@ void loop() {
         connectWifi();
         Serial.println("Sending measurements");
          #ifdef BMP_IS_ATTACHED
-          if (BMP280preshPa != 42949672.00) ThingSpeak.setField(1, BMP280temp);
+          //if (BMP280preshPa != 42949672.00) ThingSpeak.setField(1, BMP280temp);
           if (BMP280preshPa != 42949672.00) ThingSpeak.setField(2, BMP280preshPa);
           if (BMP280preshPa != 42949672.00) ThingSpeak.setField(7, BMP280alti);       
          #endif
          #ifdef SCD41_IS_ATTACHED
+          ThingSpeak.setField(1, temperature);
           ThingSpeak.setField(3, co2);
           ThingSpeak.setField(4, humidity);
           ThingSpeak.setField(6, battery);
@@ -745,9 +736,9 @@ void loop() {
         displayLimit = 5500;
         displayLowerLimit = 2500;
         //OLEDgraphTEMP(BMP280temp, BMP280pres, BMP280alti);
-        OLEDgraphTEMP(soilTemperatureC, BMP280pres, BMP280alti);
+        OLEDgraphTEMP(soilTemperatureC, co2, humidity);
       }
-      printResults();
+      //printResults();
     }
 }
 
@@ -1062,6 +1053,20 @@ void showLogo_regosh(){
   delay(30);
 }
 
+void showLogo_ear(){
+  display.clearDisplay(); // Make sure the display is cleared
+  display.drawBitmap(0, 0, logo_ear, 128, 64, WHITE);  
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(22,0);
+  display.println("ENVIRONMENTAL");
+  display.setCursor(10,8);
+  display.println("ARTISTIC RESEARCH");
+  // Update the display
+  display.display();
+  delay(30);
+}
+
 void showLogo_sensirion(){
   display.clearDisplay(); // Make sure the display is cleared
   display.drawBitmap(0, 0, logo_sensirion, 128, 64, WHITE);  
@@ -1220,8 +1225,10 @@ void OLEDshowCO2(uint16_t ppm, float temp, float hum)
     delay(30);
 }
 
+// OLEDgraphTEMP(soilTemperatureC, co2, humidity);
+
 void OLEDgraphTEMP(float temp, float pres, float alt)
-{   int presRound = pres/100;
+{   int presRound = pres;
     int altRound = alt;
     display.setTextSize(1);
     display.fillRect(0, 0, 128, 16, BLACK);
@@ -1237,10 +1244,10 @@ void OLEDgraphTEMP(float temp, float pres, float alt)
     display.setTextSize(1);
     display.setCursor(4, 0);
     display.print(presRound);
-    display.println("hPa");
+    display.println("ppm");
     display.setCursor(4, 9);
     display.print(altRound);
-    display.println("m");
+    display.println("%");
 /*
     if (meas_counter > 0) {
         display.drawLine(meas_counter - 1 + 28, 64 - last_ppm_high_res() / displayFactor, meas_counter + 28, 64 - current->ppm / displayFactor, WHITE);

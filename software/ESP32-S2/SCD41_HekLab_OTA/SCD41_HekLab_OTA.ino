@@ -1,5 +1,4 @@
 
-
  /*
  * dusjagr edited some stuffs...
  * Adding display
@@ -9,22 +8,20 @@
  * Adding Dallas Temperature sensor for external use of soil temperature probe
  * different version of OneWireNG had to be used to compile correctly on ESP32 S2
  * Not finished: proper calibration routine
- * 
+ * Added FeatherS3
+ * Added option for OTA upload
  */
 
 
-//#define FEATHERS2
-#define FEATHERS3
+#define FEATHERS2
+//#define FEATHERS3
 //#define WEMOS_LOLIN32
 
 #define SCD41_IS_ATTACHED
-//#define BMP_IS_ATTACHED
+#define BMP_IS_ATTACHED
 #define DS18x20_IS_ATTACHED
 #define USE_THINGSPEAK
-
-#ifdef USE_THINGSPEAK
-  #include "/home/dusjagr/secrets.h"
-#endif
+#define USE_OTA
 
 #include <Arduino.h>
 #include <SensirionI2CScd4x.h>
@@ -32,6 +29,17 @@
 #include <Adafruit_NeoPixel.h>
 #include "OLED_stuff.h"
 #include "driver/adc.h"
+
+#ifdef USE_THINGSPEAK
+  #include "/home/dusjagr/secrets.h"
+#endif
+
+#ifdef USE_OTA
+  #include <WiFi.h>
+  #include <ESPmDNS.h>
+  #include <WiFiUdp.h>
+  #include <ArduinoOTA.h>
+#endif
 
 const int analogInPin = 5;  // Analog input pin that the potentiometer is attached to
 uint32_t ADCValue = 0;        // value read from the pot
@@ -115,11 +123,11 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // SCD41 calibration settings *******
 // ==================================
 
-//uint16_t alt = 274; //Maribor, Slovenia
-uint16_t alt = 295; //Ljubljana, Slovenia
+uint16_t alt = 274; //Maribor, Slovenia
+//uint16_t alt = 295; //Ljubljana, Slovenia
 //uint16_t alt = 731; //Trubschachen, Emmental
 uint32_t pressureCalibration;
-float tempOffset = 4.1;
+float tempOffset = 2.1;
 bool ascSetting = false; // Turn automatic self calibration off
 
 // DS18x20 stuffs *******************
@@ -160,7 +168,7 @@ void printAddress(DeviceAddress deviceAddress)
   #include <Adafruit_BMP280.h>
   Adafruit_BMP280 bmp; // I2C
 
-  #define SEA_LEVEL_PRESSURE    1010.0f   // sea level pressure 1013.25
+  #define SEA_LEVEL_PRESSURE    1025.0f   // sea level pressure 1013.25
   #define BMP_ADDRESS 0x76
   //float BMP280temp;
   //uint32_t BMP280pres;
@@ -248,10 +256,12 @@ void setup() {
     Serial.begin(115200);
     //while ( !Serial ) delay(100);   // wait for native usb
     delay(500);
+
     #ifdef FEATHERS2
     adc1_config_width(ADC_WIDTH_BIT_13);
     adc1_config_channel_atten(ADC1_CHANNEL_4,ADC_ATTEN_DB_11);
     #endif
+    
 
     Serial.println("    ");
     Serial.println("=========== Booting ROŠA System ===========");
@@ -322,6 +332,62 @@ void setup() {
     neopixel.show();
     connectWifi();
 #endif
+
+#ifdef USE_OTA
+    Serial.println("Booting");
+    //WiFi.mode(WIFI_STA);
+    //WiFi.begin(ssid, pass);
+    while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("Connection Failed! Rebooting...");
+    delay(5000);
+    ESP.restart();
+  }
+
+  // Port defaults to 3232
+  // ArduinoOTA.setPort(3232);
+
+  // Hostname defaults to esp3232-[MAC]
+  ArduinoOTA.setHostname("UROS-HekLab");
+
+  // No authentication by default
+  // ArduinoOTA.setPassword("admin");
+
+  // Password can be set with it's md5 value as well
+  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
+  // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
+
+  ArduinoOTA
+    .onStart([]() {
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH)
+        type = "sketch";
+      else // U_SPIFFS
+        type = "filesystem";
+
+      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      Serial.println("Start updating " + type);
+    })
+    .onEnd([]() {
+      Serial.println("\nEnd");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    });
+
+  ArduinoOTA.begin();
+
+  Serial.println("Ready");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());    
+    #endif
 
     Serial.println("    ");
 
@@ -579,6 +645,9 @@ void setup() {
 }
 
 void loop() {
+    #ifdef USE_OTA
+    ArduinoOTA.handle();
+    #endif
     digitalWrite(LEDonBoard, HIGH);
     digitalWrite(LEDexternal, HIGH);
     //neopixel.setPixelColor(0, neopixel.Color(255, 150, 0));
@@ -624,7 +693,11 @@ void loop() {
 
     batCounter = batCounter + 1;
     ADCValue =  adc1_get_raw(ADC1_CHANNEL_5);
-    voltage = voltage + map(ADCValue, 0, 8191, 0, 5330);
+    // voltage = voltage + map(ADCValue, 0, 1765, 0, 3300); //S3
+
+    voltage = voltage + map(ADCValue, 0, 8191, 0, 5330); //S2
+    
+    //voltage = ADCValue;
 
     if (batCounter >= batAveraging) {
         battery = voltage / batAveraging;
@@ -634,7 +707,7 @@ void loop() {
 
 
 #ifdef DS18x20_IS_ATTACHED
-    if (millis() - DS18x20DataTimer >= 3000){
+    if (millis() - DS18x20DataTimer >= 1000){
       DS18x20sensors.requestTemperatures(); 
       soilTemperatureC = DS18x20sensors.getTempCByIndex(0);
       if(soilTemperatureC == DEVICE_DISCONNECTED_C) {
@@ -643,8 +716,9 @@ void loop() {
         //return;
         }
       DS18x20DataTimer = millis();
+      //TimeSec = DS18x20DataTimer / 1000;
       if (screenState == 1) meas_counter++;
-      //printResults();
+      printResults();
     }    
 #endif
 
@@ -685,6 +759,7 @@ void loop() {
           Serial.println("Invalid sample detected, skipping.");
       } else {
           SCD41DataTimer = millis();
+          TimeSec = SCD41DataTimer / 1000;
       }
       delay(200); 
       neopixel.clear();
@@ -704,13 +779,14 @@ void loop() {
         connectWifi();
         Serial.println("Sending measurements");
          #ifdef BMP_IS_ATTACHED
-          if (BMP280preshPa != 42949672.00) ThingSpeak.setField(1, BMP280temp);
+          //if (BMP280preshPa != 42949672.00) ThingSpeak.setField(1, BMP280temp);
           if (BMP280preshPa != 42949672.00) ThingSpeak.setField(2, BMP280preshPa);
           if (BMP280preshPa != 42949672.00) ThingSpeak.setField(7, BMP280alti);       
          #endif
          #ifdef SCD41_IS_ATTACHED
           ThingSpeak.setField(3, co2);
           ThingSpeak.setField(4, humidity);
+          ThingSpeak.setField(1, temperature);
           ThingSpeak.setField(6, battery);
          #endif
          #ifdef DS18x20_IS_ATTACHED
@@ -745,9 +821,10 @@ void loop() {
         displayLimit = 5500;
         displayLowerLimit = 2500;
         //OLEDgraphTEMP(BMP280temp, BMP280pres, BMP280alti);
-        OLEDgraphTEMP(soilTemperatureC, BMP280pres, BMP280alti);
+        //OLEDgraphTEMP(soilTemperatureC, BMP280pres, BMP280alti);
+        OLEDgraphTEMP(soilTemperatureC, co2, humidity);
       }
-      printResults();
+      //printResults();
     }
 }
 
@@ -768,6 +845,12 @@ void printResults()
         Serial.print("\t");
         Serial.print("Bat: ");
         Serial.print(battery/1000);
+        //Serial.print("\t");
+        //Serial.print("ADC: ");
+        //Serial.print(battery/1000);
+        //Serial.print(ADCValue);
+
+        
         
 #ifdef BMP_IS_ATTACHED
         Serial.print("\t");
@@ -1220,8 +1303,59 @@ void OLEDshowCO2(uint16_t ppm, float temp, float hum)
     delay(30);
 }
 
+// OLEDgraphTEMP(soilTemperatureC, co2, humidity);
+
 void OLEDgraphTEMP(float temp, float pres, float alt)
-{   int presRound = pres/100;
+{   int presRound = pres;
+    int altRound = alt;
+    display.setTextSize(1);
+    display.fillRect(0, 0, 128, 16, BLACK);
+    display.setTextColor(WHITE);
+    display.setCursor(48, 0);
+    display.println("T");
+    display.setCursor(48, 7);
+    display.println("C");
+    display.setTextSize(2);
+    display.setCursor(56, 0);
+    display.print(":");
+    display.print(temp);
+    display.setTextSize(1);
+    display.setCursor(4, 0);
+    display.print(presRound);
+    display.println("ppm");
+    display.setCursor(4, 9);
+    display.print(altRound);
+    display.println("%");
+/*
+    if (meas_counter > 0) {
+        display.drawLine(meas_counter - 1 + 28, 64 - last_ppm_high_res() / displayFactor, meas_counter + 28, 64 - current->ppm / displayFactor, WHITE);
+    }
+*/
+    if (meas_counter >= 0) {
+        display.drawLine(meas_counter + 28, 64 - 0 / displayFactor, meas_counter + 28, 64 - ((temp*100)-displayLowerLimit) / displayFactor, WHITE);
+    }
+
+    if (meas_counter > 100) {
+        meas_counter = 0;
+        OLEDdrawBackgroundTemp();
+    }
+/*
+    if (ppm > thresholdPPM) {
+        if (last_ppm_high_res() < thresholdPPM) {
+            display.setTextSize(1);
+            display.setCursor(h_head + 3, thresholdPPM / displayFactor + 10);
+            display.print((millis() - started) / 1000);
+            display.println("s");
+        }
+    }
+*/
+
+    display.display();
+    delay(30);
+}
+
+void OLEDgraphTEMP_bak(float temp, float pres, float alt)
+{   int presRound = pres;
     int altRound = alt;
     display.setTextSize(1);
     display.fillRect(0, 0, 128, 16, BLACK);
