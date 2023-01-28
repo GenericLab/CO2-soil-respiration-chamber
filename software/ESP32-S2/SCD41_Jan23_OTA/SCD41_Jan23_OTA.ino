@@ -1,5 +1,4 @@
-
- /*
+/*
  * dusjagr edited some stuffs...
  * Adding display
  * Adding timer
@@ -19,9 +18,9 @@
 
 #define SCD41_IS_ATTACHED
 //#define BMP_IS_ATTACHED
-//#define DS18x20_IS_ATTACHED
-#define USE_THINGSPEAK
-#define USE_OTA
+#define DS18x20_IS_ATTACHED
+//#define USE_THINGSPEAK
+//#define USE_OTA
 
 #include <Arduino.h>
 #include <SensirionI2CScd4x.h>
@@ -89,7 +88,7 @@ unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
 
 const int neoPixelcount = 1;         // How many NeoPixels are attached?
-int neoBrightness = 25;
+int neoBrightness = 255;
 
   float BMP280temp = -1;
   float BMP280preshPa = -1;
@@ -127,7 +126,7 @@ uint16_t alt = 274; //Maribor, Slovenia
 //uint16_t alt = 295; //Ljubljana, Slovenia
 //uint16_t alt = 731; //Trubschachen, Emmental
 uint32_t pressureCalibration;
-float tempOffset = 2.1;
+float tempOffset = 4.1;
 bool ascSetting = false; // Turn automatic self calibration off
 
 // DS18x20 stuffs *******************
@@ -318,7 +317,9 @@ void setup() {
     neopixel.setBrightness(neoBrightness); // Set BRIGHTNESS to about 1/5 (max = 255)
 
     //rainbow(5);             // Flowing rainbow cycle along the whole strip
-    //rainbowCycle(5);
+    rainbowCycle(15);
+    rainbowCycle(15);
+
     neopixel.setPixelColor(0, neopixel.Color(255, 0, 255));
     neopixel.show();    
     Serial.println("    ");
@@ -348,7 +349,7 @@ void setup() {
 
   // Hostname defaults to esp3232-[MAC]
   //ArduinoOTA.setHostname("UROS-HekLab");
-  ArduinoOTA.setHostname("UROS-FotoMuzej");
+  ArduinoOTA.setHostname("ROSA-CO2");
 
   // No authentication by default
   // ArduinoOTA.setPassword("admin");
@@ -651,9 +652,7 @@ void loop() {
     #endif
     digitalWrite(LEDonBoard, HIGH);
     digitalWrite(LEDexternal, HIGH);
-    //neopixel.setPixelColor(0, neopixel.Color(255, 150, 0));
-    neopixel.clear();
-    neopixel.show();
+    
     int reading = digitalRead(buttonPin);
     if (reading != lastButtonState) {
       // reset the debouncing timer
@@ -694,9 +693,9 @@ void loop() {
 
     batCounter = batCounter + 1;
     ADCValue =  adc1_get_raw(ADC1_CHANNEL_5);
-    // voltage = voltage + map(ADCValue, 0, 1765, 0, 3300); //S3
+    voltage = voltage + map(ADCValue, 0, 1765, 0, 3300); //S3
 
-    voltage = voltage + map(ADCValue, 0, 8191, 0, 5330); //S2
+    //voltage = voltage + map(ADCValue, 0, 8191, 0, 5330); //S2
     
     //voltage = ADCValue;
 
@@ -713,13 +712,13 @@ void loop() {
       soilTemperatureC = DS18x20sensors.getTempCByIndex(0);
       if(soilTemperatureC == DEVICE_DISCONNECTED_C) {
         
-        Serial.println("Error: Could not read soilTemperature data");
+        //Serial.println("Error: Could not read soilTemperature data");
         //return;
         }
       DS18x20DataTimer = millis();
       //TimeSec = DS18x20DataTimer / 1000;
       if (screenState == 1) meas_counter++;
-      printResults();
+      //printResults();
     }    
 #endif
 
@@ -763,9 +762,27 @@ void loop() {
           TimeSec = SCD41DataTimer / 1000;
       }
       delay(200); 
-      neopixel.clear();
-      neopixel.show();
-      //printResults(); 
+      if (co2<=800){ 
+        neopixel.clear();
+        neopixel.setPixelColor(0, neopixel.Color(0, 255, 0));
+        neopixel.show();
+      }
+      if (co2>=800 && co2<=1200){ 
+        neopixel.clear();
+        neopixel.setPixelColor(0, neopixel.Color(255, 125, 0));
+        neopixel.show();
+      }   
+      if (co2>=1200 && co2<=2000){ 
+        neopixel.clear();
+        neopixel.setPixelColor(0, neopixel.Color(255, 55, 0));
+        neopixel.show();
+      }     
+      if (co2>=2000){ 
+        neopixel.clear();
+        neopixel.setPixelColor(0, neopixel.Color(255, 0, 0));
+        neopixel.show();
+      }   
+      printResults(); 
       if (screenState == 0) meas_counter++;
         
     }
@@ -799,6 +816,7 @@ void loop() {
             neopixel.setPixelColor(0, neopixel.Color(0, 0, 255));
             neopixel.show();
             delay(200); 
+            rainbowCycle(5);
             }
           else{
             Serial.println("Problem updating channel. HTTP error code " + String(x));
