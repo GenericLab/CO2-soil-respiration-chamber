@@ -10,11 +10,11 @@ float temperature;
 float humidity;
 uint16_t error;
 
-void tcaselect(uint8_t i) { //Function for configuration of TCA9548A multiplexer
-  if (i > 7) return;
+void tcaselect(uint8_t Port) { //Function for configuration of TCA9548A multiplexer
+  if (Port > 7) return;
  
   Wire.beginTransmission(TCAADDR);
-  Wire.write(1 << i);
+  Wire.write(1 << Port);
   Wire.endTransmission();  
 }
 
@@ -23,8 +23,8 @@ void setup()
     Wire.begin();
     Serial.begin(9600);
     scd4x.begin(Wire); //start the I2C configuration for SCD41
-    for (uint8_t t=0; t<8; t++) {
-      tcaselect(t);
+    for (uint8_t Port=0; Port<8; Port++) {
+      tcaselect(Port);
       Wire.beginTransmission(SCD41);
         if (!Wire.endTransmission()){
           scd4x.stopPeriodicMeasurement();  //stop any measurement in progress
@@ -38,12 +38,12 @@ void loop()
 {
   char errorMessage[256];
   delay(5000);
-    for (uint8_t t=0; t<8; t++) {
-      tcaselect(t);
+    for (uint8_t Port=0; Port<8; Port++) {
+      tcaselect(Port);
       Wire.beginTransmission(SCD41);
         if (!Wire.endTransmission()){
           Serial.print("Reading SCD41 in port ");
-          Serial.println(t);
+          Serial.println(Port);
           error = scd4x.readMeasurement(co2, temperature, humidity);
           if (error) {
           Serial.print("Error trying to execute readMeasurement(): ");
