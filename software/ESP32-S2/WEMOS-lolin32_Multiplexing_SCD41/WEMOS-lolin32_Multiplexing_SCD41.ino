@@ -3,6 +3,7 @@
 
 
 #define TCAADDR 0x70
+#define SCD41 0x62
 SensirionI2CScd4x scd4x;
 uint16_t co2;
 float temperature;
@@ -35,6 +36,7 @@ void setup()
 
 void loop() 
 {
+  char errorMessage[256];
   delay(5000);
     for (uint8_t t=0; t<8; t++) {
       tcaselect(t);
@@ -43,6 +45,13 @@ void loop()
           Serial.print("Reading SCD41 in port ");
           Serial.println(t);
           error = scd4x.readMeasurement(co2, temperature, humidity);
+          if (error) {
+          Serial.print("Error trying to execute readMeasurement(): ");
+          errorToString(error, errorMessage, 256);
+          Serial.println(errorMessage);
+      } else if (co2 == 0) {
+          Serial.println("Invalid sample detected, skipping.");
+      } else {
           Serial.print("CO2: ");
           Serial.println(co2);
           Serial.print("Temperature: ");
@@ -52,6 +61,6 @@ void loop()
           Serial.println();
           Serial.println();
         }
+      }
     }
 }
-
