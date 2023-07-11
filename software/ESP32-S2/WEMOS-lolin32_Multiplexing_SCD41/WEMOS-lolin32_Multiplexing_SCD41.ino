@@ -175,7 +175,3 @@ void SCD41ForcedCalibration()
 void SCD41ButtonPressed (){
   SCD41CalibrationIsOn=!SCD41CalibrationIsOn;
   }
-
-//agregar funcion de calibracion con boton para iniciar/forzar terminado
-//hacer que tome los 5 ultimos valores y los promedie
-
