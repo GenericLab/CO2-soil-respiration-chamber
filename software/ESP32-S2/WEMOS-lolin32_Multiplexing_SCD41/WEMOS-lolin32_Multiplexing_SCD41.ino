@@ -4,6 +4,7 @@
 
 #define TCAADDR 0x70
 #define SCD41 0x62
+uint16_t Altitude=958; //Lujan de Cuyo altitude over the sea level
 SensirionI2CScd4x scd4x;
 unsigned long SCD41DataTimer;
 unsigned long SCD41CalibrationTimer;
@@ -39,6 +40,7 @@ void setup(){
 
 void loop() {
   if(SCD41CalibrationIsOn == true){
+    SCD41SetAltitude();
     SCD41ForcedCalibration();
   }
   if (millis() - SCD41DataTimer >= 6000){
@@ -115,7 +117,7 @@ void SCD41ForcedCalibration()
      *
      * @return 0 on success, an error code otherwise
      */
-    Serial.println("Calibration is starting");
+    Serial.println("CO2 calibration is starting");
     delay(500); 
     char errorMessage[256];
     SCD41CalibrationTimer=millis();
@@ -170,6 +172,29 @@ void SCD41ForcedCalibration()
     Serial.println("============= Starting Measurements ============");
     SCD41DataTimer = millis();
     //OLEDdrawBackground();
+}
+
+void SCD41SetAltitude(){
+  char errorMessage[256];
+  for (uint8_t Port=0; Port<8; Port++) {
+      tcaselect(Port);
+      Wire.beginTransmission(SCD41);
+      if (!Wire.endTransmission()){
+        error = scd4x.stopPeriodicMeasurement();
+        error = scd4x.setSensorAltitude(Altitude);
+        if (error) {
+          Serial.print("Error trying to execute setSensorAltitude: ");
+          errorToString(error, errorMessage, 256);
+          Serial.println(errorMessage);
+        }
+        Serial.print("In port ");
+        Serial.print(Port);
+        Serial.print(", altitude is set to ");
+        Serial.println(Altitude);
+        error = scd4x.startPeriodicMeasurement();
+      }
+    }
+    SCD41DataTimer = millis();
 }
 
 void SCD41ButtonPressed (){
