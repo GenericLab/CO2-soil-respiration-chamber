@@ -5,21 +5,22 @@ SCD41_Multiplexed::SCD41_Multiplexed(){
 }
 
 void SCD41_Multiplexed::Begin(){ //Function for starting periodic meassurements on all 8 SCD41 sensors
-  this->DataTimer=0;
   this->CalibrationTimer=0;
   this->CalibrationIsOn= false;
   Wire.begin();
   this->scd4x.begin(Wire); //start the I2C configuration for SCD41
-  for (uint8_t Port=0; Port<8; Port++) {
+  for (uint8_t Port=0; Port<4; Port++) {
     TCAselect(Port);
-    this->Init();
+    this->Init(Port);
+    this->Data.Altitude[Port]=this->scd4x.getSensorAltitude(this->Data.Altitude[Port]);
   }
+  this->DataTimer=millis();
 }
 
 void SCD41_Multiplexed::TCAselect(uint8_t Port) { //Function for configuration of TCA9548A multiplexer
-  if (Port > 7) return;
+  if (Port+1 > 4) return;                         //The +1 is used because port 0 is skipped
   Wire.beginTransmission(TCAADDR);
-  Wire.write(1 << Port);
+  Wire.write(1 << Port+1);
   Wire.endTransmission();  
 }
 
@@ -33,44 +34,45 @@ bool SCD41_Multiplexed::CheckTimer(){             //Funtion for checking the rea
 }
 
 void SCD41_Multiplexed::ReadSensor(uint8_t Port){         //function for reading all 8 SCD41 sensors
-  this->DataAvailable=false;
   char errorMessage[256];
   Wire.beginTransmission(SCD41);
   if (!Wire.endTransmission()){
-    this->error = this->scd4x.readMeasurement(this->co2[Port], this->temperature[Port], this->humidity[Port]);
-    this->DataAvailable=true;
+    this->error = this->scd4x.readMeasurement(this->Data.co2[Port], this->Data.temperature[Port], this->Data.humidity[Port]);
   }
 }
 
 void SCD41_Multiplexed::ToSerial(uint8_t Port){         //Function for printing SCD41 data to the serial port
     char errorMessage[256];
-  if(!this->DataAvailable){
-      return;
+  if(!this->Data.Availability[Port]){
+    Serial.print("SCD41 not available in port ");
+    Serial.println(Port);
+    return;
   }
-  Serial.print("Reading SCD41 in port ");
+  Serial.print("SCD41 Port ");
   Serial.println(Port);
   if (this->error) {
       Serial.print("Error trying to execute readMeasurement(): ");
       errorToString(this->error, errorMessage, 256);
       Serial.println(errorMessage);
-  }   else if (this->co2[Port] == 0) {
+  }   else if (this->Data.co2[Port] == 0) {
         Serial.println("Invalid sample detected, skipping.");
   }   else {
       Serial.print("CO2: ");
-      Serial.println(this->co2[Port]);
-      Serial.print("Temperature: ");
-      Serial.println(this->temperature[Port]);
-      Serial.print("Humidity: ");
-      Serial.println(this->humidity[Port]);
+      Serial.print(this->Data.co2[Port]);
+      Serial.print(" Temperature: ");
+      Serial.print(this->Data.temperature[Port]);
+      Serial.print(" Humidity: ");
+      Serial.print(this->Data.humidity[Port]);
       Serial.println();
   }
 }
 
-void SCD41_Multiplexed::Init(){             //Function for starting individual SCD41 sensor
+void SCD41_Multiplexed::Init(uint8_t Port){             //Function for starting individual SCD41 sensor
   Wire.beginTransmission(SCD41);
   if (!Wire.endTransmission()){
     this->scd4x.stopPeriodicMeasurement();  //stop any measurement in progress
     this->scd4x.startPeriodicMeasurement(); //restart measurement
+    this->Data.Availability[Port]=true;
   }
 }
 
@@ -105,7 +107,7 @@ void SCD41_Multiplexed::ForcedCalibration(){    //Function for calibrating CO2 m
     uint16_t frc;
     uint16_t calPPM=400;
 
-    for (uint8_t Port=0; Port<8; Port++) {
+    for (uint8_t Port=0; Port<4; Port++) {
       this->TCAselect(Port);
       Wire.beginTransmission(SCD41);
       if (!Wire.endTransmission()){
@@ -119,7 +121,7 @@ void SCD41_Multiplexed::ForcedCalibration(){    //Function for calibrating CO2 m
       }
     }
     delay(500);
-    for (uint8_t Port=0; Port<8; Port++) {
+    for (uint8_t Port=0; Port<4; Port++) {
       TCAselect(Port);
       Wire.beginTransmission(SCD41);
       if (!Wire.endTransmission()){
@@ -133,8 +135,9 @@ void SCD41_Multiplexed::ForcedCalibration(){    //Function for calibrating CO2 m
           Serial.println(frc-0x8000);
         }
       }
+      this->Data.Altitude[Port]=this->scd4x.getSensorAltitude(this->Data.Altitude[Port]);
     }
-    for (uint8_t Port=0; Port<8; Port++) {
+    for (uint8_t Port=0; Port<4; Port++) {
       TCAselect(Port);
       Wire.beginTransmission(SCD41);
       if (!Wire.endTransmission()){
@@ -151,14 +154,14 @@ void SCD41_Multiplexed::ForcedCalibration(){    //Function for calibrating CO2 m
     //OLEDdrawBackground();
 }
 
-void SCD41_Multiplexed::SetAltitude(){      //Function for setting altitude on the SCD41 sensors
+void SCD41_Multiplexed::SetAltitude(uint16_t Altitude){      //Function for setting altitude on the SCD41 sensors
     char errorMessage[256];
-  for (uint8_t Port=0; Port<8; Port++) {
+  for (uint8_t Port=0; Port<4; Port++) {
       TCAselect(Port);
       Wire.beginTransmission(SCD41);
       if (!Wire.endTransmission()){
         error = this->scd4x.stopPeriodicMeasurement();
-        error = this->scd4x.setSensorAltitude(this->Altitude);
+        error = this->scd4x.setSensorAltitude(Altitude);
         if (error) {
           Serial.print("Error trying to execute setSensorAltitude: ");
           errorToString(this->error, errorMessage, 256);
@@ -167,14 +170,20 @@ void SCD41_Multiplexed::SetAltitude(){      //Function for setting altitude on t
         Serial.print("In port ");
         Serial.print(Port);
         Serial.print(", altitude is set to ");
-        Serial.println(this->Altitude);
+        Serial.println(Altitude);
         this->error = scd4x.startPeriodicMeasurement();
       }
+      this->Data.Altitude[Port]=this->scd4x.getSensorAltitude(this->Data.Altitude[Port]);
     }
     this->DataTimer = millis();
 }
 void SCD41_Multiplexed::CalibrationStart(){     //Function for starting calibration
-  this->SetAltitude();
+  this->SetAltitude(LujanDeCuyoAltitude);
+  this->ForcedCalibration();
+}
+
+void SCD41_Multiplexed::CalibrationStart(uint16_t Altitude){     //Function for starting calibration
+  this->SetAltitude(Altitude);
   this->ForcedCalibration();
 }
 
@@ -186,11 +195,14 @@ bool SCD41_Multiplexed::CheckCalibration(){     //Function for checking if the c
   return this->CalibrationIsOn;
 }
 uint16_t SCD41_Multiplexed::get_co2(uint8_t Port){  //Function for getting the CO2 meassurement
-  return this->co2[Port];
+  return this->Data.co2[Port];
 }
 float SCD41_Multiplexed::get_temperature(uint8_t Port){   //Function for getting the temperature meassurement
-  return this->temperature[Port];
+  return this->Data.temperature[Port];
 }
 float SCD41_Multiplexed::get_humidity(uint8_t Port){      //Function for getting the humidity meassurement
-  return this->humidity[Port];
+  return this->Data.humidity[Port];
+}
+SCD41_data SCD41_Multiplexed::get_alldata(){
+  return Data;
 }

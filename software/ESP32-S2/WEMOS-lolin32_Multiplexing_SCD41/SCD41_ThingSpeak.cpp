@@ -12,6 +12,7 @@ void SCD41_ThingSpeak::Begin(unsigned long SendInterval){ //Function for startin
     delay(500);
     Serial.print(".");
   }
+  Serial.println(".");
   ThingSpeak.begin(client);
   this->DataTimer=0;
   this->SendInterval=SendInterval;
@@ -35,8 +36,11 @@ bool SCD41_ThingSpeak::CheckTimer(){                            //Function for c
   bool Timer = false;
   if (millis() - this->DataTimer >= this->SendInterval){
     Timer=true;
-    this->DataTimer = millis();
   }
   return Timer;
+}
+
+void SCD41_ThingSpeak::RestartTimer(){
+  this->DataTimer = millis();
 }
 

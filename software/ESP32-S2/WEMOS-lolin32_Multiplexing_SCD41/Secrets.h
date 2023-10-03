@@ -2,10 +2,10 @@
 #define Secrets_h
 
 namespace Network_Secrets{
-  #define ChannelNumber 00000000              //ThingSpeak Channel Number
-  #define WriteAPIKey "XXXXXXXXXXXXXXXXX"     //ThingSpeak API key
-  #define ssid "XXXXXXXXXX"                  //WiFi network Name
-  #define password "XXXXXXXX"               //Wifi network Password
+  #define ChannelNumber 2228967               //ThingSpeak Channel Number
+  #define WriteAPIKey "L9KWRY7K4WULSKFF"      //ThingSpeak API key
+  #define ssid "Tecnologia"                   //WiFi network Name
+  #define password "Tecno2022"                //Wifi network Password
 }
 
 #endif
