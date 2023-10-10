@@ -5,7 +5,7 @@ using namespace SSD1306_Namespace;
 SerialAndScreenPrinter::SerialAndScreenPrinter() : Screen(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1){          //initialize the screen in constructor
 }
 
-void SerialAndScreenPrinter::Begin(){
+void SerialAndScreenPrinter::Begin(){                             //Function for starting up the OLED screen
   if(!this->Screen.begin(SSD1306_SWITCHCAPVCC, SSD1306_ADDRESS)) {
     this->Available=false;
   }
@@ -21,11 +21,11 @@ void SerialAndScreenPrinter::Begin(){
   delay(2000);
 }
 
-bool SerialAndScreenPrinter::ScreenIsAvailable(){
+bool SerialAndScreenPrinter::ScreenIsAvailable(){               //Returns whether the screen is available or not
   return this->Available;
 }
 
-void SerialAndScreenPrinter::ToScreen(BMP280_data PressureData, SCD41_data CO2SensorData){
+void SerialAndScreenPrinter::ToScreen(BMP280_data PressureData, SCD41_data CO2SensorData){    //Function for parsing and printing the data on screen
   this->Screen.clearDisplay();
   Screen.setCursor(0, 0);
   this->Screen.println("Port CO2 Alt Tmp Hum"); 
@@ -70,7 +70,7 @@ void SerialAndScreenPrinter::ToScreen(BMP280_data PressureData, SCD41_data CO2Se
   Screen.display();
 }
 
-void SerialAndScreenPrinter::ToSerial(BMP280_data PressureData, SCD41_data CO2SensorData){
+void SerialAndScreenPrinter::ToSerial(BMP280_data PressureData, SCD41_data CO2SensorData){ //Function for parsing and sending the data to serial port
   Serial.println("Port CO2 Alt Tmp Hum");
   for(int Port=-1;Port<4;Port++){
     if(Port==-1 && PressureData.Available){
@@ -114,14 +114,14 @@ void SerialAndScreenPrinter::ToSerial(BMP280_data PressureData, SCD41_data CO2Se
   }
 }
 
-void SerialAndScreenPrinter::CalibrationStart(){
+void SerialAndScreenPrinter::CalibrationStart(){          //Function that informs the user that the SCD41 sensors are calibrating
   this->Screen.clearDisplay();
   Screen.setCursor(0, 0);
   Screen.println("Calibrating CO2      sensors");
   Screen.display();
 }
 
-void SerialAndScreenPrinter::CalibrationEnd(){
+void SerialAndScreenPrinter::CalibrationEnd(){            //Function that informs the user that the SCD41 sensor's calibration is finished
   this->Screen.clearDisplay();
   Screen.setCursor(0, 0);
   Screen.println("Starting Measurements");

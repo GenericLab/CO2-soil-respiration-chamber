@@ -1,5 +1,8 @@
 //Using WEMOS LOLIN32 Lite board
+//Using Object Oriented Programing for easy understanding and modularity
 //Port 19 (SDA) and 23 (SCL) are I2C ports
+//Full schematics uploaded in the next link
+//https://github.com/GenericLab/CO2-soil-respiration-chamber/blob/main/hardware/WEMOS-lolin32_Multiplexing_SCD41%20schematics/Lolin%20Multiplexing.png
 //White cable for ground rail
 //Black cable for 3.3V rail
 //Orange cable for SCL rail, Red cable for multiplexed SCL
@@ -27,6 +30,7 @@ void SCD41ButtonPressed (){           //Function for changing the calibration st
 }
 
 void setup(){
+  //Starts all modules and attach an interruption to the button
   BounceTimer=0;
   Serial.begin(115200);
   Printer.Begin();

@@ -4,7 +4,7 @@ using namespace SCD41_Multiplexed_namespace;
 SCD41_Multiplexed::SCD41_Multiplexed(){
 }
 
-void SCD41_Multiplexed::Begin(){ //Function for starting periodic meassurements on all 8 SCD41 sensors
+void SCD41_Multiplexed::Begin(){ //Function for starting periodic meassurements on all 4 SCD41 sensors
   this->CalibrationTimer=0;
   this->CalibrationIsOn= false;
   Wire.begin();
@@ -33,7 +33,7 @@ bool SCD41_Multiplexed::CheckTimer(){             //Funtion for checking the rea
   return Timer;
 }
 
-void SCD41_Multiplexed::ReadSensor(uint8_t Port){         //function for reading all 8 SCD41 sensors
+void SCD41_Multiplexed::ReadSensor(uint8_t Port){         //function for reading individual SCD41 sensors
   char errorMessage[256];
   Wire.beginTransmission(SCD41);
   if (!Wire.endTransmission()){
@@ -41,7 +41,7 @@ void SCD41_Multiplexed::ReadSensor(uint8_t Port){         //function for reading
   }
 }
 
-void SCD41_Multiplexed::ToSerial(uint8_t Port){         //Function for printing SCD41 data to the serial port
+void SCD41_Multiplexed::ToSerial(uint8_t Port){         //Function for printing SCD41 data to the serial port (currently not used)
     char errorMessage[256];
   if(!this->Data.Availability[Port]){
     Serial.print("SCD41 not available in port ");
@@ -76,7 +76,7 @@ void SCD41_Multiplexed::Init(uint8_t Port){             //Function for starting 
   }
 }
 
-void SCD41_Multiplexed::ForcedCalibration(){    //Function for calibrating CO2 meassurement on all 8 sensors
+void SCD41_Multiplexed::ForcedCalibration(){    //Function for calibrating CO2 meassurement on all 4 sensors
     // Force Calibration **************************************
 
    /**
@@ -102,7 +102,6 @@ void SCD41_Multiplexed::ForcedCalibration(){    //Function for calibrating CO2 m
     this->CalibrationTimer=millis();
     while ((millis() - this->CalibrationTimer < 180000) && this->CalibrationIsOn == true){}
     this->CalibrationIsOn = false;
-    //calDisplay();
     
     uint16_t frc;
     uint16_t calPPM=400;
@@ -151,7 +150,6 @@ void SCD41_Multiplexed::ForcedCalibration(){    //Function for calibrating CO2 m
     }
     Serial.println("============= Starting Measurements ============");
     this->DataTimer = millis();
-    //OLEDdrawBackground();
 }
 
 void SCD41_Multiplexed::SetAltitude(uint16_t Altitude){      //Function for setting altitude on the SCD41 sensors
@@ -177,12 +175,12 @@ void SCD41_Multiplexed::SetAltitude(uint16_t Altitude){      //Function for sett
     }
     this->DataTimer = millis();
 }
-void SCD41_Multiplexed::CalibrationStart(){     //Function for starting calibration
+void SCD41_Multiplexed::CalibrationStart(){     //Function for starting calibration with default data
   this->SetAltitude(LujanDeCuyoAltitude);
   this->ForcedCalibration();
 }
 
-void SCD41_Multiplexed::CalibrationStart(uint16_t Altitude){     //Function for starting calibration
+void SCD41_Multiplexed::CalibrationStart(uint16_t Altitude){     //Function for starting calibration with BMP280 or other pressure data
   this->SetAltitude(Altitude);
   this->ForcedCalibration();
 }
@@ -203,6 +201,6 @@ float SCD41_Multiplexed::get_temperature(uint8_t Port){   //Function for getting
 float SCD41_Multiplexed::get_humidity(uint8_t Port){      //Function for getting the humidity meassurement
   return this->Data.humidity[Port];
 }
-SCD41_data SCD41_Multiplexed::get_alldata(){
+SCD41_data SCD41_Multiplexed::get_alldata(){              //Function for getting CO2, Altitude, Temperature, Humidity and Pressure data of all 4 SCD41 sensors
   return Data;
 }

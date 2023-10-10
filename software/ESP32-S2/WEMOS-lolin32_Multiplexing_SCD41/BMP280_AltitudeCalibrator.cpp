@@ -5,7 +5,7 @@ using namespace BMP280_Namespace;
 BMP280_AltitudeCalibrator::BMP280_AltitudeCalibrator(){
 }
 
-void BMP280_AltitudeCalibrator::Begin(){
+void BMP280_AltitudeCalibrator::Begin(){              //Function for starting meassurements
   unsigned status;
   status=this->bmpSensor.begin(BMP280_ADDRESS);
   if(!status){
@@ -23,17 +23,17 @@ void BMP280_AltitudeCalibrator::Begin(){
   this->Data.Altitude=-9999999999;
 }
 
-void BMP280_AltitudeCalibrator::readAltitude(){
+void BMP280_AltitudeCalibrator::readAltitude(){                 //Function for reading altitude sensor
   if(this->Data.Available){
     this->Data.Altitude=this->bmpSensor.readAltitude(SEA_LEVEL_PRESSURE);
   }
 }
 
-float BMP280_AltitudeCalibrator::getAltitude(){
+float BMP280_AltitudeCalibrator::getAltitude(){                 //Function for returning the altitude
   return this->Data.Altitude;
 }
 
-void BMP280_AltitudeCalibrator::ToSerial(){
+void BMP280_AltitudeCalibrator::ToSerial(){                     //Function for printing the altitude (Currently not used)
   if(this->Data.Available){
     Serial.print("Altitude: ");
     Serial.println(this->Data.Altitude);
@@ -43,11 +43,11 @@ void BMP280_AltitudeCalibrator::ToSerial(){
   }
 }
 
-bool BMP280_AltitudeCalibrator::IsAvailable(){
+bool BMP280_AltitudeCalibrator::IsAvailable(){                  //Returns whether the sensor is available or not 
   return this->Data.Available;
 }
 
-BMP280_data BMP280_AltitudeCalibrator::get_alldata(){
+BMP280_data BMP280_AltitudeCalibrator::get_alldata(){           //Returns pressure and availability of sensor
   return this->Data;
 }
 

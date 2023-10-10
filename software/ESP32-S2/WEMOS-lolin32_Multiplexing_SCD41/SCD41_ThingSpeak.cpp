@@ -40,7 +40,7 @@ bool SCD41_ThingSpeak::CheckTimer(){                            //Function for c
   return Timer;
 }
 
-void SCD41_ThingSpeak::RestartTimer(){
+void SCD41_ThingSpeak::RestartTimer(){                          //Function for restarting the data timer
   this->DataTimer = millis();
 }
 
