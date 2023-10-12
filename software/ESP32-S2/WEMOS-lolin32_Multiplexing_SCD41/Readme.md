@@ -4,6 +4,9 @@ The wiring is as shown next
 
 ![Wemos_Schematics](https://github.com/GenericLab/CO2-soil-respiration-chamber/blob/main/hardware/WEMOS-lolin32_Multiplexing_SCD41%20schematics/Lolin%20Multiplexing%20SCD41%20Wiring.png)
 
+You can acces the electrical details and PCB terminals count in the next file:
+[Terminals Count](https://github.com/GenericLab/CO2-soil-respiration-chamber/blob/main/hardware/WEMOS-lolin32_Multiplexing_SCD41%20schematics/Terminals%20Count.xlsx)
+
 The Soil respiration chamber contains a SCD41 sensor as shown next:
 
 ![Soil Chamber 1](https://github.com/GenericLab/CO2-soil-respiration-chamber/blob/main/hardware/WEMOS-lolin32_Multiplexing_SCD41%20schematics/Soil%20Chamber.jpg)
@@ -25,5 +28,4 @@ To start using the soil chamber you'll need to calibrate the sensor first. Then 
 
 The calibration procedure starts with the push of the botton, for it to be successfull you'll need to open the respiration chamber and expose the sensor and the chamber to fresh air, then push the buton so the sensor start to measure fresh air, it gets calibrated using the air pressure given by the sensor, or the Lujan de Cuyo Altitude variable in SCD41_multiplexed.h file (you can change the used altitude in the main file istead of BMP readings if you need to). The full process last 3 to 4 minutes. After it's finished the sensor CO2 measurement is calibrated to 400 PPM, it is important to note that this is not an absolute measurement, but a relative one.
 
-You can acces the electrical details and terminals count in the next file:
-[Recuento terminales](https://github.com/GenericLab/CO2-soil-respiration-chamber/blob/main/hardware/WEMOS-lolin32_Multiplexing_SCD41%20schematics/Recuento%20terminales.xlsx)
+
