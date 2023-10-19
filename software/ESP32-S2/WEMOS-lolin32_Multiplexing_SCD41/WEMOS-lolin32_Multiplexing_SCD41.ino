@@ -16,34 +16,47 @@
 #include "SerialAndScreenPrinter.h"
 
 int SCD41CalibrationButton = 12;
-unsigned long BounceTimer;
+unsigned long PressTimer;
+bool CalibrationFlag;
 SCD41_Multiplexed SCD41_M;
 SCD41_ThingSpeak ThingSpeakLogger;
 BMP280_AltitudeCalibrator BMPAltitude; 
 SerialAndScreenPrinter Printer;
 
-void SCD41ButtonPressed (){           //Function for changing the calibration status with a push of a bottom (Antibounce included)
-  if(millis() - BounceTimer >= 250){
-    SCD41_M.ButtonPressed();
-    BounceTimer=millis();
+void SCD41ButtonPressed(){           //Function for changing the calibration status with a push of a bottom (Antibounce included, you'll need to press for 1 second)
+  if(digitalRead(SCD41CalibrationButton) == false){
+    PressTimer=millis();
+    CalibrationFlag=true;
   }
+  else{
+    {
+      CalibrationFlag=false;
+    }
+  }
+  
 }
 
 void setup(){
   //Starts all modules and attach an interruption to the button
-  BounceTimer=0;
+  PressTimer=0;
   Serial.begin(115200);
   Printer.Begin();
   SCD41_M.Begin();
   ThingSpeakLogger.Begin(30000);
   BMPAltitude.Begin();
   pinMode(SCD41CalibrationButton, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(SCD41CalibrationButton), SCD41ButtonPressed, FALLING);
-  
+  attachInterrupt(digitalPinToInterrupt(SCD41CalibrationButton), SCD41ButtonPressed, CHANGE);  
+  CalibrationFlag=false;
 }
 
 void loop() {
-  //Code section for checking Calibration Flag and Starting Calibrations
+  //Code section for checking if the button has been pressed for 5 seconds to ensure that the calibration is user triggered and not accidentally triggered
+  if(CalibrationFlag){
+    if(millis() - PressTimer >= 5000){
+      SCD41_M.ButtonPressed();
+    }
+  }
+  //Code section for checking is the user requested calibration and starting calibrations
   if(SCD41_M.CheckCalibration()){
     Printer.CalibrationStart();
     if(BMPAltitude.IsAvailable()){
@@ -73,9 +86,14 @@ void loop() {
 
   //Code Section for Sending SCD41 and BMP280 data to Thingspeak channel
   if(ThingSpeakLogger.CheckTimer()){
-    for (uint8_t Port=0; Port<4; Port++) {
+    /*for (uint8_t Port=0; Port<4; Port++) {
       ThingSpeakLogger.SetField(Port,SCD41_M.get_co2(Port));
-    }
+    }*/ // This is for sending 4 CO2 data
+    //This is for sending CO2, Temperature and Humidity
+    ThingSpeakLogger.SetField(0,SCD41_M.get_co2(0));
+    ThingSpeakLogger.SetField(1,SCD41_M.get_temperature(0));
+    ThingSpeakLogger.SetField(2,SCD41_M.get_humidity(0));
+
     ThingSpeakLogger.SetField(4,BMPAltitude.getAltitude());
     ThingSpeakLogger.ChannelSend();
     ThingSpeakLogger.RestartTimer();
