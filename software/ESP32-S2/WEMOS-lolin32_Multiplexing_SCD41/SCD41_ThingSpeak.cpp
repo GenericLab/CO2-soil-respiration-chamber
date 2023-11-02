@@ -22,8 +22,18 @@ void SCD41_ThingSpeak::SetField(uint8_t Port, uint16_t Data){   //Function for s
   ThingSpeak.setField(Port+1, Data);
 }
 
-void SCD41_ThingSpeak::ChannelSend(){                           //Function for sending all the data to the ThingSpeak channel
-  int x = ThingSpeak.writeFields(ChannelNumber, WriteAPIKey);
+void SCD41_ThingSpeak::ChannelSend(int channel){                           //Function for sending all the data to the ThingSpeak channel
+  int x;
+  switch(channel){
+    case 1:{
+      x = ThingSpeak.writeFields(ChannelNumber1, WriteAPIKey1);
+    break;}
+    case 2:{
+      x = ThingSpeak.writeFields(ChannelNumber2, WriteAPIKey2);
+    break;}
+    default:{
+      x=200;}
+  }
   if (x == 200) {
     Serial.println("Channel updated");
   }

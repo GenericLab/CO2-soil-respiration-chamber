@@ -10,7 +10,7 @@ public:
 SCD41_ThingSpeak();
 void Begin(unsigned long SendInterval);
 void SetField(uint8_t Port,uint16_t Data);
-void ChannelSend();
+void ChannelSend(int channel);
 bool CheckTimer();
 void RestartTimer();
 private:

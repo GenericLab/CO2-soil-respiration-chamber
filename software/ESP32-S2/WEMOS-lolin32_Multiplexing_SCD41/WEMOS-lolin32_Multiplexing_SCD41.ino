@@ -90,12 +90,21 @@ void loop() {
       ThingSpeakLogger.SetField(Port,SCD41_M.get_co2(Port));
     }*/ // This is for sending 4 CO2 data
     //This is for sending CO2, Temperature and Humidity
-    ThingSpeakLogger.SetField(0,SCD41_M.get_co2(0));
-    ThingSpeakLogger.SetField(1,SCD41_M.get_temperature(0));
-    ThingSpeakLogger.SetField(2,SCD41_M.get_humidity(0));
-
-    ThingSpeakLogger.SetField(4,BMPAltitude.getAltitude());
-    ThingSpeakLogger.ChannelSend();
+    for(int i=0;i<2;i++){
+      ThingSpeakLogger.SetField(0,SCD41_M.get_co2(2*i));
+      ThingSpeakLogger.SetField(1,SCD41_M.get_temperature(2*i));
+      ThingSpeakLogger.SetField(2,SCD41_M.get_humidity(2*i));
+      ThingSpeakLogger.SetField(3,SCD41_M.get_co2(2*i+1));
+      ThingSpeakLogger.SetField(4,SCD41_M.get_temperature(2*i+1));
+      ThingSpeakLogger.SetField(5,SCD41_M.get_humidity(2*i+1));
+      ThingSpeakLogger.SetField(6,BMPAltitude.getAltitude());
+      if(i==0){
+        ThingSpeakLogger.ChannelSend(1);
+      }
+      else if(i==1){
+        ThingSpeakLogger.ChannelSend(2);
+      }
+    }
     ThingSpeakLogger.RestartTimer();
   }
 }
