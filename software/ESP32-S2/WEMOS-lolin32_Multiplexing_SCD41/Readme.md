@@ -1,4 +1,4 @@
-This program allows to use up to four SCD41 with a Wemos lolin32 lite board for up to four soil respiration chambers to be running simultaneously, it includes the usage of a OLED screen as User Interface, a BMP280 sensor for altitude calibration, and data sending to a thingspeak channel.
+This program allows to use up to four SCD41 with a Wemos lolin32 lite board for up to four soil respiration chambers to be running simultaneously, it includes the usage of a OLED screen as User Interface, a BMP280 sensor for altitude calibration, and data sending to two thingspeak channels.
 
 The wiring is as shown next
 
