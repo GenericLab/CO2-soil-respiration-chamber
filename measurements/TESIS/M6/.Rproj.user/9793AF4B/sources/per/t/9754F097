@@ -1,0 +1,25 @@
+{
+    "id": "9754F097",
+    "path": null,
+    "project_path": null,
+    "type": "r_code_browser",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1725569810943.0,
+    "source_on_save": false,
+    "relative_order": 6,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "context": "package:ggplot2:::ggplot"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 28429397857009781,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1725569810943,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -1,0 +1,26 @@
+{
+    "id": "EB5FA126",
+    "path": "~/GitHub/CO2-soil-respiration-chamber/measurements/TESIS/M6/R2.R",
+    "project_path": "R2.R",
+    "type": "r_source",
+    "hash": "1570105872",
+    "contents": "",
+    "dirty": false,
+    "created": 1725569278391.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "428,0",
+        "scrollLine": "415"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1725572808,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1725572808568,
+    "read_only": false,
+    "read_only_alternatives": []
+}
